@@ -18,26 +18,26 @@ num_class=2
 
 for p in  Closure Math JacksonCore Mockito JxPath Time
 do
-output_folder=results/single_${p}_intra_mutants_class_contrastive_${num_class}_loss_both/context
+output_folder=results/single_${p}_intra_mutants_contrastive_${num_class}_loss_both/context
 bash mutant_train_single.sh gat "pretrained_models/context/gat/model_0" ${output_folder}/ attention $device $num_class both $p results/mutants_class_contrastive_2_loss_CE/context/gat/saved_model.pt
 done
 
 for p in  Closure Math JacksonCore Mockito JxPath Time
 do
-output_folder=results/single_${p}_intra_mutants_class_contrastive_${num_class}_loss_CE/context
+output_folder=results/single_${p}_intra_mutants_contrastive_${num_class}_loss_CE/context
 bash mutant_train_single.sh gat "pretrained_models/context/gat/model_0" ${output_folder}/ attention $device $num_class CE $p results/mutants_class_contrastive_2_loss_CE/context/gat/saved_model.pt
 done
 
 
 for p in  Closure Math JacksonCore Mockito JxPath Time
 do
-output_folder=results/single_${p}_intra_mutants_class_scratch_${num_class}_loss_both/context
+output_folder=results/single_${p}_intra_mutants_scratch_${num_class}_loss_both/context
 bash mutant_train_single.sh gat "pretrained_models/context/gat/model_0" ${output_folder}/ attention $device $num_class both $p -1
 done
 
 for p in  Closure Math JacksonCore Mockito JxPath Time
 do
-output_folder=results/single_${p}_intra_mutants_class_scratch_${num_class}_loss_CE/context
+output_folder=results/single_${p}_intra_mutants_scratch_${num_class}_loss_CE/context
 bash mutant_train_single.sh gat "pretrained_models/context/gat/model_0" ${output_folder}/ attention $device $num_class CE $p -1
 done
 
