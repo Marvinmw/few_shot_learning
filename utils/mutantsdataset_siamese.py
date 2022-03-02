@@ -132,7 +132,8 @@ class MutantsDataset(InMemoryDataset):
     
     def process(self):     
         import json  
-        mutanttyper=json.load( open( os.path.join(os.path.join(self.root, "mutant_operator.json")) ) )
+        #mutanttyper=json.load( open( os.path.join(os.path.join(self.root, "mutant_operator.json")) ) )
+        mutants_type = json.load(open(os.path.join(self.root,"data", "mutants_type.json")  ))
         typeid={"STD":1, "LVR":2, "ORU":3, "ROR":4, "SOR":5, "LOR":6, "COR":7, "AOR":8}       
         pairgraph_labels = []
         pair_data_list = collections.defaultdict(list)
@@ -158,7 +159,7 @@ class MutantsDataset(InMemoryDataset):
                     id=graphs[i].mutantID
                     pair_data_list[mutant_data_labels[i]].append(PairData(graphs[i].edge_index,  graphs[i].x, graphs[i].edge_attr, graphs[i].ins_length, 
                                                     orggraph.edge_index,  orggraph.x, orggraph.edge_attr, orggraph.ins_length, 
-                                                    torch.tensor(mutant_data_labels[i]), torch.tensor([typeid[mutanttyper[f"{pname}_{id}"]]]) ))
+                                                    torch.tensor(mutant_data_labels[i]), torch.tensor([typeid[mutants_type[f"{pname}_{id}"][0]]]) ))
                  
                     mutants_splitting[mutant_data_labels[i]].append( f"{pname}_{id}"  )
                        
