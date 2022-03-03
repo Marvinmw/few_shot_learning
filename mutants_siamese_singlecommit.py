@@ -34,6 +34,12 @@ view_test_f1 = 0
 criterion = nn.CrossEntropyLoss()
 contrastive_loss = ContrastiveLoss()
 
+def set_seed(args):
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)
+
 def train(args, model, device, loader, optimizer, loader_val, test_loader_dic, epoch, saved_model_path, earlystopping, scheduler, dataset_list):
     global best_f1
     global view_test_f1
@@ -398,10 +404,11 @@ def main():
                         help='save model')
     parser.add_argument("--projects", nargs="+", default=["JxPath"])
     parser.add_argument("--loss", type=str, default="both", help='[both, CT, CE]')
-
+    parser.add_argument('--seed', type = int, default =1234)
     args = parser.parse_args( )
     with open(args.saved_model_path+'/commandline_args.txt', 'w') as f:
         json.dump(args.__dict__, f, indent=2)
+    set_seed(args)
     train_mode(args)
 
     

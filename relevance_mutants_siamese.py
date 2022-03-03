@@ -17,7 +17,6 @@ from utils.pytorchtools import EarlyStopping
 from utils.AverageMeter import AverageMeter
 from utils.probing_classifier import PredictionLinearModelFineTune
 from utils.ContrastiveLoss import ContrastiveLoss 
-from utils.suploss import SupConLoss
 import collections
 import random
 import gc
@@ -40,7 +39,7 @@ best_f1 = 0
 view_test_f1 = 0
 criterion = nn.CrossEntropyLoss()
 contrastive_loss = ContrastiveLoss()
-supcloss = SupConLoss(temperature=0.1)
+
 def train(args, model, device, loader, optimizer, loader_val, loader_test, epoch, saved_model_path, earlystopping, scheduler, dataset_list):
     global best_f1
     global view_test_f1
@@ -55,7 +54,7 @@ def train(args, model, device, loader, optimizer, loader_val, loader_test, epoch
         pred,  x_s, x_t = model(batch)    
        
         if args.loss == "both":
-            loss =   ( criterion( pred, batch.y)  + supcloss(  x_s, x_t,  batch.y) )/2
+            loss =   ( criterion( pred, batch.y)  + contrastive_loss(  x_s, x_t,  1-batch.y) )/2
         elif args.loss == "CE":
             loss =  criterion( pred, batch.y) 
         elif args.loss == "CT":
@@ -168,6 +167,7 @@ def create_dataset(args, train_projects, dataset_list):
             valid_dataset.extend( [ dataset[i] for i in split_dict["valid"].tolist() ] )
             test_dataset.extend( [ dataset[i] for i in  split_dict["test"].tolist()] )
     y = [ d.y.item() for d in train_dataset ]
+    
     train_stat = collections.Counter(y)
     train_dataset = balanced_oversample(train_dataset, y)
     loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
@@ -288,6 +288,8 @@ def train_mode(args):
         earlystopping = EarlyStopping(monitor="loss", patience=50, verbose=True, path=args.saved_model_path, save_model=save_model)
     else:
         earlystopping = EarlyStopping(monitor="f1", patience=50, verbose=True, path=args.saved_model_path, save_model=save_model)
+    
+   
     for epoch in range(1, args.epochs+1):
         print(" ====epoch === " + str(epoch))
         performance_model, evalstepres, _  = train(args, model, device, loader, optimizer, loader_val, loader_test,epoch, args.saved_model_path, earlystopping, scheduler, dataset_list)
@@ -352,7 +354,7 @@ def main():
     parser.add_argument('--lazy', type=str, default="no",
                         help='save model')
     parser.add_argument("--projects", nargs="+", default=["Mockito"])
-    parser.add_argument("--loss", type=str, default="both", help='[both, CT, CE]')
+    parser.add_argument("--loss", type=str, default="CT", help='[both, CT, CE]')
     parser.add_argument('--seed', type = int, default =1234)
     args = parser.parse_args( )
     with open(args.saved_model_path+'/commandline_args.txt', 'w') as f:
