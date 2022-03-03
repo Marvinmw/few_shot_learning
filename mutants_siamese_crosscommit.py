@@ -210,8 +210,7 @@ def projects_dict(args):
                 name.append( os.path.basename(pf) )
     return projects, name
 
-def keep_label(args, dataset):
-    pass
+
 
 def train_mode(args):
     os.makedirs( args.saved_model_path, exist_ok=True)

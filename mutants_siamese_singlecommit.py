@@ -46,11 +46,11 @@ def train(args, model, device, loader, optimizer, loader_val, test_loader_dic, e
         batch = batch.to(device)
         optimizer.zero_grad()      
         pred,  x_s, x_t = model(batch)    
-        if args.num_class == 2:
-            batch.y[ batch.y != 0 ] = 1
-            #batch.y = 1 -  batch.y
-        else:
-            batch.y[ batch.y == 4 ] = 1
+        # if args.num_class == 2:
+        #     batch.y[ batch.y != 0 ] = 1
+        #     #batch.y = 1 -  batch.y
+        # else:
+        #     batch.y[ batch.y == 4 ] = 1
         if args.loss == "both":
             loss =  ( criterion( pred, batch.y) + contrastive_loss( x_s, x_t, 1 - batch.y)    )/2
         elif args.loss == "CE":
@@ -125,10 +125,10 @@ def eval(args, model, device, loader):
         batch = batch.to(device)
         with torch.no_grad():
             outputs,x_s, x_t = model(batch)
-            if args.num_class == 2:
-                batch.y[ batch.y!= 0 ] = 1
-            else:
-                batch.y[ batch.y == 4 ] = 1
+            # if args.num_class == 2:
+            #     batch.y[ batch.y!= 0 ] = 1
+            # else:
+            #     batch.y[ batch.y == 4 ] = 1
             #loss = criterion( outputs, batch.y)
             if args.loss == "both":
                 loss =  ( criterion( outputs, batch.y) + contrastive_loss( x_s, x_t, 1 - batch.y)    )/2
@@ -172,7 +172,20 @@ def create_dataset(args, dataset_list):
     minimum_size = inf
     for tp in dataset_list:
             dataset_inmemory = dataset_list[tp] 
-            split_dict = dataset_inmemory.split(reshuffle=False, splitting_ratio=0.1) 
+            if args.loss == "CE":
+                split_dict = dataset_inmemory.split(reshuffle=False, splitting_ratio=0.1) 
+            else:
+                split_dict = dataset_inmemory.split(reshuffle=False, splitting_ratio=0.25) 
+            if args.task == "killable":
+                dataset_inmemory.keep_label(zeros_label=[0])
+            elif args.task == "fail":
+                dataset_inmemory.keep_label(zeros_label=[0,2,3])
+            elif args.task == "exc":
+                dataset_inmemory.keep_label(zeros_label=[0,1,3,4])
+            elif args.task == "time":
+                dataset_inmemory.keep_label(zeros_label=[0,1,2,4])
+            else:
+                assert False, f"Wrong task, {args.task}"
             dataset = dataset_inmemory.data
             print(f"{tp} {len(dataset)}")
             if minimum_size > len(dataset):
@@ -183,8 +196,9 @@ def create_dataset(args, dataset_list):
             #test_dataset.extend( [ dataset[i] for i in  split_dict["test"].tolist()] )
     
     train_dataset_inmemory =   dataset_list[train_project]     
-    train_split_dict = train_dataset_inmemory.split(reshuffle=False,  splitting_ratio=0.1)  
-    train_data = dataset_inmemory.data
+    train_split_dict = train_dataset_inmemory.get_split_index(splitting_ratio=0.25)  
+    train_data = train_dataset_inmemory.data
+    #print(train_split_dict["train"].tolist())
     train_dataset.extend( [ train_data[i] for i in train_split_dict["train"].tolist() ])
     valid_dataset.extend( [ train_data[i] for i in train_split_dict["valid"].tolist()+train_split_dict["test"].tolist() ] )
     #test_dataset.extend( [ train_data[i] for i in  train_split_dict["test"].tolist()] )
@@ -203,7 +217,7 @@ def create_dataset(args, dataset_list):
     for tp in dataset_list:
         if tp != train_project:
             dataset_inmemory = dataset_list[tp] 
-            split_dict = dataset_inmemory.split(reshuffle=False, splitting_ratio=0.1) 
+           # split_dict = dataset_inmemory.split(reshuffle=False, splitting_ratio=0.1) 
             dataset = dataset_inmemory.data
             test_loader_dic[tp] = DataLoader( dataset, batch_size=min(int(args.batch_size/2),len(dataset)), shuffle=False, num_workers = args.num_workers,follow_batch=['x_s', 'x_t']  )
             test_y = test_y + [ d.y.item() for d in dataset ]
@@ -364,6 +378,7 @@ def main():
     parser.add_argument('--dataset_path', type=str, default = 'dataset/mutants_small/', help='root directory of dataset. For now, only classification.')
     parser.add_argument('--input_model_file', type=str, default = 'pretrained_models/context/gat/model_0', help='filename to read the model (if there is any)')
     parser.add_argument('--saved_model_file', type=str, default= "-1", )
+    parser.add_argument('--task', type=str, default= "killable", )
     #parser.add_argument('--pre', type=str, default= "yes", help="warm up training for this task")
     parser.add_argument('--target_token_path', type=str, default = 'dataset/downstream/java-small/target_word_to_index.json', help='Target Vocab')
     parser.add_argument('--saved_model_path', type = str, default = 'results/mutants_siamese/context', help='filename to output the pre-trained model')
@@ -381,7 +396,7 @@ def main():
                         help='mutantype')
     parser.add_argument('--lazy', type=str, default="yes",
                         help='save model')
-    parser.add_argument("--projects", nargs="+", default=["JacksonCore"])
+    parser.add_argument("--projects", nargs="+", default=["JxPath"])
     parser.add_argument("--loss", type=str, default="both", help='[both, CT, CE]')
 
     args = parser.parse_args( )
