@@ -71,21 +71,21 @@ class PredictionLinearPatchModelFineTune( nn.Module ):
     def __init__(self,in_dim, out_dim, encoder, dropratio=0.25):
         super(PredictionLinearPatchModelFineTune, self).__init__()
         self.encoder = encoder
-        self.dense = nn.Linear(in_dim*2*2, in_dim*2)
+        self.dense = nn.Linear(in_dim , in_dim) #2*2,
         self.dropout = nn.Dropout(dropratio)
         self.out_proj = nn.Linear( in_dim*2, out_dim)
-
+      
     def forward(self, batch):
         x_s,_,  _ = self.encoder.getVector(batch.x_s, batch.edge_index_s, batch.edge_attr_s, batch.x_s_batch, batch.ins_length_s)   
         x_t,_,  _ = self.encoder.getVector(batch.x_t, batch.edge_index_t, batch.edge_attr_t, batch.x_t_batch, batch.ins_length_t)  
         
-        x0 = torch.square(torch.sub(x_s, x_t))
-        x2 = torch.sub(x_s, x_t)
-        x = torch.cat( (x_s, x_t, x2, x0) , dim=1)
-        x = self.dropout(x)
-        x = self.dense(x)
-        x = torch.tanh(x)
-        x = self.dropout(x)
+        #x0 = torch.square(torch.sub(x_s, x_t))
+        #x2 = torch.sub(x_s, x_t)
+        x = torch.cat( (x_s, x_t) , dim=1) #, x2, x0
+       # x = self.dropout(x0)
+        #x = self.dense(x)
+        #x = torch.tanh(x)
+        #x = self.dropout(x)
         return self.out_proj(x)
     
     def loadWholeModel(self, model_file, device, maps={} ):

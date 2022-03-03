@@ -74,7 +74,7 @@ class SupConLoss(nn.Module):
         logits_mask = torch.scatter(
             torch.ones_like(mask),
             1,
-            torch.arange(batch_size * anchor_count).view(-1, 1).to(device),
+            torch.arange(batch_size ).view(-1, 1).to(device),
             0
         )
         mask = mask * logits_mask
