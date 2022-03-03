@@ -45,11 +45,11 @@ def train(args, model, device, loader, optimizer, loader_val, loader_test, epoch
         batch = batch.to(device)
         optimizer.zero_grad()      
         pred,  x_s, x_t = model(batch)    
-        if args.num_class == 2:
-            batch.y[ batch.y != 0 ] = 1
-            #batch.y = 1 -  batch.y
-        else:
-            batch.y[ batch.y == 4 ] = 1
+        # if args.num_class == 2:
+        #     batch.y[ batch.y != 0 ] = 1
+        #     #batch.y = 1 -  batch.y
+        # else:
+        #     batch.y[ batch.y == 4 ] = 1
         if args.loss == "both":
             loss =  ( criterion( pred, batch.y) + contrastive_loss( x_s, x_t, 1 - batch.y)    )/2
         elif args.loss == "CE":
@@ -117,10 +117,10 @@ def eval(args, model, device, loader):
         batch = batch.to(device)
         with torch.no_grad():
             outputs,x_s, x_t = model(batch)
-            if args.num_class == 2:
-                batch.y[ batch.y!= 0 ] = 1
-            else:
-                batch.y[ batch.y == 4 ] = 1
+            # if args.num_class == 2:
+            #     batch.y[ batch.y!= 0 ] = 1
+            # else:
+            #     batch.y[ batch.y == 4 ] = 1
             #loss = criterion( outputs, batch.y)
             if args.loss == "both":
                 loss =  ( criterion( outputs, batch.y) + contrastive_loss( x_s, x_t, 1 - batch.y)    )/2
@@ -137,7 +137,7 @@ def eval(args, model, device, loader):
       
     y_true = torch.cat(y_true, dim = 0)
     y_prediction = torch.cat(y_prediction, dim = 0)
-    accuracy, precision, recall, f1 = performance( y_true,y_prediction, average="macro")
+    accuracy, precision, recall, f1 = performance( y_true,y_prediction, average="binary")
     accuracy_macro, precision_macro, recall_macro, f1_macro = performance( y_true,y_prediction, average="macro")
     accuracy_weighted, precision_weighted, recall_weighted, f1_weighted = performance( y_true,y_prediction, average="weighted")
     accuracy_micro, precision_micro, recall_micro, f1_micro = performance( y_true,y_prediction, average="micro") 
@@ -163,6 +163,17 @@ def create_dataset(args, train_projects, dataset_list):
             dataset_inmemory = dataset_list[tp] 
             split_dict = dataset_inmemory.split(reshuffle=False) 
             dataset = dataset_inmemory.data
+            if args.task == "killable":
+                dataset_inmemory.keep_label(zeros_label=[0])
+            elif args.task == "fail":
+                dataset_inmemory.keep_label(zeros_label=[0,2,3])
+            elif args.task == "exc":
+                dataset_inmemory.keep_label(zeros_label=[0,1,3,4])
+            elif args.task == "time":
+                dataset_inmemory.keep_label(zeros_label=[0,1,2,4])
+            else:
+                assert False, f"Wrong task, {args.task}"
+
             data.extend( dataset )
     random.shuffle(data)
     fixed_size=args.fixed_size

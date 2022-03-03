@@ -145,7 +145,7 @@ def eval(args, model, device, loader):
       
     y_true = torch.cat(y_true, dim = 0)
     y_prediction = torch.cat(y_prediction, dim = 0)
-    accuracy, precision, recall, f1 = performance( y_true,y_prediction, average="macro")
+    accuracy, precision, recall, f1 = performance( y_true,y_prediction, average="binary")
     accuracy_macro, precision_macro, recall_macro, f1_macro = performance( y_true,y_prediction, average="macro")
     accuracy_weighted, precision_weighted, recall_weighted, f1_weighted = performance( y_true,y_prediction, average="weighted")
     accuracy_micro, precision_micro, recall_micro, f1_micro = performance( y_true,y_prediction, average="micro") 
