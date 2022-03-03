@@ -252,6 +252,141 @@ class PairData(Data):
             return super().__inc__(key, value, *args, **kwargs)
 
 
+
+class MutantsDatasetSingleData(InMemoryDataset):
+    def __init__(self, root, dataname, project="", transform=None, pre_transform=None, pre_filter=None):
+        self.root = root
+        self.dataname = dataname
+        self.project = project
+        super(MutantsReDataset, self).__init__(root=root, transform=transform,  pre_transform=pre_transform, pre_filter=pre_filter)
+        self.pair_data = torch.load(self.processed_paths[0])
+        [ self.pairgraph_labels, self.mutants_splitting ] =  torch.load(self.processed_paths[1])
+
+    def split( self, reshuffle=False, binary=False, fixed_size=50, splitting_ratio=-1 ):
+        if reshuffle or ( not os.path.isfile( os.path.join(self.root,  "data", self.project, f"{fixed_size}_train.csv.npy") )):
+            if not os.path.isdir( os.path.join(self.root,  "data", self.project) ):
+                os.makedirs(  os.path.join(self.root,  "data", self.project) )
+            data = []
+            label=[]
+            mid = []
+            for l in self.pair_data:
+                data.extend(self.pair_data[l])
+                mid.extend(self.mutants_splitting[l])
+                if int(l) == 0:
+                    label.extend([0]*len(self.pair_data[l]))
+                    print(f"Label 0 {len(self.pair_data[l])}")
+                else:
+                    label.extend([1]*len(self.pair_data[l]))
+                    print(f"Label 1 {len(self.pair_data[l])}")
+                    
+            self.data_size = len(data)
+            self.data = data
+            self.y = label
+            statistic = Counter(label)
+            print(statistic)
+            self.mids = mid
+          
+            if splitting_ratio > 0:
+                indexes = np.arange( len(self.data) )
+                np.random.shuffle(indexes)
+                test_size = int(splitting_ratio*self.data_size)
+                val_size =  int(0.1*self.data_size)
+                test_idx = indexes[:test_size]
+                valid_idx = indexes[test_size: test_size+val_size]
+                train_idx = indexes[test_size+val_size:]
+            else:
+                indexes = np.arange( len(self.data) )
+                np.random.shuffle(indexes)       
+                val_size =  int( (self.data_size - fixed_size)*0.2 )
+                test_size = self.data_size - val_size - fixed_size
+
+            test_idx = indexes[:test_size]
+            valid_idx = indexes[test_size: test_size+val_size]
+            train_idx = indexes[:fixed_size]
+
+           
+            pickle.dump(test_idx, open( os.path.join(self.root, "data", self.project, f"{fixed_size}_test.csv.npy") , "wb"))
+            pickle.dump(valid_idx, open( os.path.join(self.root, "data",self.project, f"{fixed_size}_valid.csv.npy") , "wb"))
+            pickle.dump(train_idx, open( os.path.join(self.root, "data", self.project, f"{fixed_size}_train.csv.npy") , "wb"))
+            pickle.dump(self.mids, open( os.path.join(self.root,"data", self.project, f"{fixed_size}_mids.csv.npy") , "wb"))
+            pickle.dump([self.data, self.y, self.mids], open( os.path.join(self.root,"data", self.project, f"{fixed_size}_sampled_mids.csv.npy") , "wb"))
+            json.dump(statistic, open( os.path.join(self.root,"data",self.project,  f"{fixed_size}_statistic.json") , "w"))
+        else:
+            #print("Load from the previsou splitting")
+            [self.data, self.y, self.mids] = pickle.load( open( os.path.join(self.root,"data",self.project,  f"{fixed_size}_sampled_mids.csv.npy") , "rb") )
+            
+
+            train_idx =  pickle.load( open( os.path.join(self.root,"data",self.project,  f"{fixed_size}_train.csv.npy") , "rb") )#pd.read_csv(osp.join(path, 'train.csv'),  header = None).values.T[0]
+            valid_idx = pickle.load( open( os.path.join(self.root,"data",self.project,  f"{fixed_size}_valid.csv.npy") , "rb") )#pd.read_csv(osp.join(path, 'valid.csv'),  header = None).values.T[0]
+            test_idx = pickle.load( open( os.path.join(self.root,"data",self.project,  f"{fixed_size}_test.csv.npy") , "rb") )#pd.read_csv(osp.join(path, 'test.csv'),  header = None).values.T[0]
+        
+        labels = [ d.y.item() for d in self.data ]
+        statistic = Counter(labels)
+       # print(statistic)        
+        #print(f"Train Data Size {len(train_idx)}, Valid Data Size {len(valid_idx)}, Test Data Size {len(test_idx)}, Num {len(self.mids)}")
+        return {'train': torch.tensor(train_idx, dtype = torch.long), 'valid': torch.tensor(valid_idx, dtype = torch.long), 'test': torch.tensor(test_idx, dtype = torch.long)}
+           
+    
+    def get(self, idx):
+        data = Data()
+        pass
+        
+    @property
+    def raw_dir(self):
+        return os.path.join(self.root)
+        
+    @property
+    def raw_paths(self):
+        r"""The filepaths to find in order to skip the download."""  
+        return self.raw_file_names[0] + self.raw_file_names[1]
+
+    @property
+    def raw_file_names(self):
+        mutant_file_name_list = []
+        original_file_name_list = []
+        mutant_file_name_list.append(  os.path.join( self.root ,f"{self.project}", "raw", "mutants", "graph", f"{self.dataname}.pt")   )
+        original_file_name_list.append(  os.path.join( self.root ,f"{self.project}", "raw", "original", "graph", f"{self.dataname}.pt")   )
+        return mutant_file_name_list, original_file_name_list
+    
+    @property
+    def processed_file_names(self):
+        return [ f'geometric_data_processed_{self.dataname}_{self.project}.pt', f"data_info_{self.project}.pt"]
+    
+    def download(self):
+        pass
+    
+    def orginal_grap_mapping(self, ofile):
+        org_data = torch.load(os.path.join( ofile ))
+        org_data_list, _, org_data_id = org_data[0], org_data[1], org_data[2]
+        org_data_list = [ inverse_eage(d) for d in org_data_list ]
+        org = { d.graphID:d for d in org_data_list }
+        return org
+
+
+    def process(self):        
+       # mutanttyper=json.load( open( os.path.join(os.path.join(self.root, "mutant_type.json")) ) )    
+        data = []
+     
+        mutant_file_name_list, original_file_name_list = self.raw_file_names
+
+        mutants_splitting = collections.defaultdict(list)
+        for file_id in tqdm.tqdm( range(len(mutant_file_name_list)) ):
+            mfile = mutant_file_name_list[file_id]
+            pname = mfile.split("/")[-4]
+            ofile = original_file_name_list[file_id]
+            mutant_data = torch.load(os.path.join( mfile ))
+            mutant_data_list, graph_labels, graph_ids = mutant_data[0], mutant_data[1], mutant_data[2]
+            mutant_data_list = [ inverse_eage(d) for d in mutant_data_list ]
+            data+=mutant_data_list
+            #org_data = self.orginal_grap_mapping( ofile )
+            
+                       
+        self.data_size = len(data)                        
+        torch.save(data, self.processed_paths[0])
+        torch.save( [ pairgraph_labels, mutants_splitting ], self.processed_paths[1] )
+
+
+
       
     
 

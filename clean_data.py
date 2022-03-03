@@ -59,7 +59,7 @@ def replace_name(mutatns_folder, interactionfile,mutants_info, outputfolder):
             if (int(info["lineNumbers"]), int(info["indexes"]), int(info["blocks"]), info["mutators"] ) in df.index:
                 r = df.loc[(int(info["lineNumbers"]), int(info["indexes"]), int(info["blocks"]), info["mutators"] ), :]
                 if r["Relevant"] + r["Not_relevant"] + r["On_Change"]:
-                    rid = r["ind"]
+                    rid = r["MutantID"]
                     info["label"] = 1 if r["On_Change"] + r["Relevant"] > 0 else 0
                     info["methodDescription"] = r["methodDescription"]
                     info["mutatedMethod"] = r["mutatedMethod"]
@@ -72,10 +72,15 @@ def replace_name(mutatns_folder, interactionfile,mutants_info, outputfolder):
 
     for mid in mutant_info:
         if mutant_info[mid]["label"]:
+            if int(mutant_info[mid]["On_Change"]):
+                mutant_info[mid]["interaction"] = mid
+                continue
             rid = mid_rowid_mapping[mid] 
             interact_rid = interaction_mapping[rid]
             interact_mid = mid_rowid_mapping_reverse[interact_rid]
             mutant_info[mid]["interaction"] = interact_mid
+        else:
+            mutant_info[mid]["interaction"] = -1
 
     for f in glob.glob(f"{mutatns_folder}/**/**.class" , recursive=True):        
         p = Path(f)
@@ -93,4 +98,4 @@ def replace_name(mutatns_folder, interactionfile,mutants_info, outputfolder):
 #     args = parser.parse_args()
 #     replace_name(args.inputfile, args.outputfile)
 
-replace_name("fom_export", "fom_export/interaction_pairs.csv","fom_export/mutants_info.csv", "fom_dot")
+replace_name("fom_export", "fom_export/interaction_pairs.csv","fom_export/mutants_info.csv", "dataset/relevant_raw/fom_dot")

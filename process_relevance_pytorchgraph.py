@@ -155,6 +155,7 @@ def preprocess(class_method_id_json, graph_json , rawins_json
         data_geometric.graphID = int(method_id) 
         if datatype == "mutants":
             data_geometric.mutantID = int(graph_ids[method_id]["mid"])
+            data_geometric.interaction = int(graph_ids[method_id]["interaction"])
             data_geometric.mutant_type = int(mutant_types[graph_ids[method_id]["mutators"]])
             data_geometric.graph_label = int( graph_ids[method_id]["label"] )
             data_geometric.org_graph_id = int( graph_ids[method_id]["org_graph_id"])

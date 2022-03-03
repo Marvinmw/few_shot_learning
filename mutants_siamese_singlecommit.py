@@ -51,20 +51,20 @@ def train(args, model, device, loader, optimizer, loader_val, test_loader_dic, e
     for step, batch in enumerate(tqdm(loader, desc="Iteration")):
         batch = batch.to(device)
         optimizer.zero_grad()      
-        pred,  x_s, x_t = model(batch)    
+        pred,  x_s, x_t = model(batch, args)    
         # if args.num_class == 2:
         #     batch.y[ batch.y != 0 ] = 1
         #     #batch.y = 1 -  batch.y
         # else:
         #     batch.y[ batch.y == 4 ] = 1
-        if args.loss == "both":
-            loss =  ( criterion( pred, batch.y) + contrastive_loss( x_s, x_t, 1 - batch.y)    )/2
-        elif args.loss == "CE":
-            loss =  criterion( pred, batch.y) 
-        elif args.loss == "CT":
-            loss = contrastive_loss( x_s, x_t, 1 - batch.y)
-        else:
-            assert False
+        # if args.loss == "both":
+        #     loss =  ( criterion( pred, batch.y) + contrastive_loss( x_s, x_t, 1 - batch.y)    )/2
+        # elif args.loss == "CE":
+        loss =  criterion( pred, batch.y) 
+        # elif args.loss == "CT":
+        #     loss = contrastive_loss( x_s, x_t, 1 - batch.y)
+        # else:
+        #     assert False
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
         optimizer.step()
@@ -130,20 +130,20 @@ def eval(args, model, device, loader):
     for step, batch in enumerate(loader):
         batch = batch.to(device)
         with torch.no_grad():
-            outputs,x_s, x_t = model(batch)
+            outputs,x_s, x_t = model(batch, args)
             # if args.num_class == 2:
             #     batch.y[ batch.y!= 0 ] = 1
             # else:
             #     batch.y[ batch.y == 4 ] = 1
             #loss = criterion( outputs, batch.y)
-            if args.loss == "both":
-                loss =   criterion( outputs, batch.y)*model.beta + contrastive_loss( x_s, x_t, 1 - batch.y)   *model.alpha
-            elif args.loss == "CE":
-                loss =  criterion( outputs, batch.y) 
-            elif args.loss == "CT":
-                loss = contrastive_loss( x_s, x_t, 1 - batch.y)
-            else:
-                assert False
+            # if args.loss == "both":
+            #     loss =   criterion( outputs, batch.y)*model.beta + contrastive_loss( x_s, x_t, 1 - batch.y)   *model.alpha
+            # elif args.loss == "CE":
+            loss =  criterion( outputs, batch.y) 
+            # elif args.loss == "CT":
+            #     loss = contrastive_loss( x_s, x_t, 1 - batch.y)
+            # else:
+            #     assert False
             evalloss.update( loss.item() )         
         y_true.append(batch.y.cpu())
         _, predicted_label = torch.max( outputs, dim=1 )

@@ -59,6 +59,7 @@ def extract_mutants_graph_task(input):
                         break
         assert found == 2,f"{mid}"
     
+    
 
     json.dump(mutant_info, open(os.path.join(input, "mutants_info_graph_ids.json"), "w" ), indent=6) 
     json.dump(mutant_type, open(os.path.join(input, "mutants_type.json"), "w" ), indent=6)                
