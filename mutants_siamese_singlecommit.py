@@ -131,7 +131,7 @@ def eval(args, model, device, loader):
             #     batch.y[ batch.y == 4 ] = 1
             #loss = criterion( outputs, batch.y)
             if args.loss == "both":
-                loss =  ( criterion( outputs, batch.y) + contrastive_loss( x_s, x_t, 1 - batch.y)    )/2
+                loss =   criterion( outputs, batch.y)*model.beta + contrastive_loss( x_s, x_t, 1 - batch.y)   *model.alpha
             elif args.loss == "CE":
                 loss =  criterion( outputs, batch.y) 
             elif args.loss == "CT":
@@ -308,7 +308,7 @@ def train_mode(args):
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Trainable Parameters Model {pytorch_total_params}\n")
     if not args.saved_model_file == "-1":
-        model.load_state_dict( torch.load(args.saved_model_file, map_location="cpu") )
+        model.load_state_dict( torch.load(args.saved_model_file, map_location="cpu"), strict=False )
     model.to(device)
 
     #set up optimizer

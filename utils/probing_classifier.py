@@ -1,32 +1,35 @@
 import torch
 import torch.nn as nn
 
-class PredictionLinearModel( nn.Module ):
-    def __init__(self,in_dim, out_dim):
-        super(PredictionLinearModel, self).__init__()
-        self.linear1 = nn.Linear(in_dim, out_dim)
-        #self.alpha = nn.Parameter(torch.tensor(0.), requires_grad=True)
+# class PredictionLinearModel( nn.Module ):
+#     def __init__(self,in_dim, out_dim):
+#         super(PredictionLinearModel, self).__init__()
+#         self.linear1 = nn.Linear(in_dim, out_dim)
+      
+#         #self.alpha = nn.Parameter(torch.tensor(0.), requires_grad=True)
    
-    def forward(self, x):
-        # if len(argv) == 1:
-        #     x = argv[0]
-        # if len(argv) == 2:
-        #     x1, x2 = argv[0], argv[1]
-        #     x = torch.sigmoid( self.alpha ) * x1  + ( 1 - torch.sigmoid(self.alpha) ) * x2
-        return self.linear1(x)
+#     def forward(self, x):
+#         # if len(argv) == 1:
+#         #     x = argv[0]
+#         # if len(argv) == 2:
+#         #     x1, x2 = argv[0], argv[1]
+#         #     x = torch.sigmoid( self.alpha ) * x1  + ( 1 - torch.sigmoid(self.alpha) ) * x2
+#         return self.linear1(x)
 
-    # def getVector(self, *argv):
-    #     if len(argv) == 1:
-    #         x = argv[0]
-    #     if len(argv) == 2:
-    #         x1, x2 = argv[0], argv[1]
-    #         x = torch.sigmoid( self.alpha ) * x1  + ( 1 - torch.sigmoid(self.alpha) ) * x2
-    #     return x
+#     # def getVector(self, *argv):
+#     #     if len(argv) == 1:
+#     #         x = argv[0]
+#     #     if len(argv) == 2:
+#     #         x1, x2 = argv[0], argv[1]
+#     #         x = torch.sigmoid( self.alpha ) * x1  + ( 1 - torch.sigmoid(self.alpha) ) * x2
+#     #     return x
 
 class PredictionLinearModelFineTune( nn.Module ):
     def __init__(self,in_dim, out_dim, encoder, addedMutantType=False, dropratio=0.25):
         super(PredictionLinearModelFineTune, self).__init__()
         self.encoder = encoder
+        self.alpha = nn.Parameter(torch.tensor(0.5), requires_grad=True)
+        self.beta = 1 - self.alpha
         self.addedMutantType = addedMutantType
         if addedMutantType:
             self.dense = nn.Linear(in_dim*2*2+in_dim//3*3, in_dim*2)

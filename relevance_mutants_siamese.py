@@ -17,6 +17,7 @@ from utils.pytorchtools import EarlyStopping
 from utils.AverageMeter import AverageMeter
 from utils.probing_classifier import PredictionLinearModelFineTune
 from utils.ContrastiveLoss import ContrastiveLoss 
+from utils.suploss import SupConLoss
 import collections
 import random
 import gc
@@ -28,12 +29,18 @@ except:
     def linear_schedule(optimizer, num_warmup_steps=100, num_training_steps=100):
         return get_linear_schedule_with_warmup(optimizer, warmup_steps=num_warmup_steps,
                                                     t_total=num_training_steps)
-                                                    
+def set_seed(args):
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)
+
+
 best_f1 = 0
 view_test_f1 = 0
 criterion = nn.CrossEntropyLoss()
 contrastive_loss = ContrastiveLoss()
-
+supcloss = SupConLoss(temperature=0.1)
 def train(args, model, device, loader, optimizer, loader_val, loader_test, epoch, saved_model_path, earlystopping, scheduler, dataset_list):
     global best_f1
     global view_test_f1
@@ -46,13 +53,9 @@ def train(args, model, device, loader, optimizer, loader_val, loader_test, epoch
         batch = batch.to(device)
         optimizer.zero_grad()      
         pred,  x_s, x_t = model(batch)    
-        if args.num_class == 2:
-            batch.y[ batch.y != 0 ] = 1
-            #batch.y = 1 -  batch.y
-        else:
-            batch.y[ batch.y == 4 ] = 1
+       
         if args.loss == "both":
-            loss =  ( criterion( pred, batch.y) + contrastive_loss( x_s, x_t, 1 - batch.y)    )/2
+            loss =   ( criterion( pred, batch.y)  + supcloss(  x_s, x_t,  batch.y) )/2
         elif args.loss == "CE":
             loss =  criterion( pred, batch.y) 
         elif args.loss == "CT":
@@ -118,10 +121,7 @@ def eval(args, model, device, loader):
         batch = batch.to(device)
         with torch.no_grad():
             outputs,x_s, x_t = model(batch)
-            if args.num_class == 2:
-                batch.y[ batch.y!= 0 ] = 1
-            else:
-                batch.y[ batch.y == 4 ] = 1
+            
             #loss = criterion( outputs, batch.y)
             if args.loss == "both":
                 loss =  ( criterion( outputs, batch.y) + contrastive_loss( x_s, x_t, 1 - batch.y)    )/2
@@ -138,7 +138,7 @@ def eval(args, model, device, loader):
       
     y_true = torch.cat(y_true, dim = 0)
     y_prediction = torch.cat(y_prediction, dim = 0)
-    accuracy, precision, recall, f1 = performance( y_true,y_prediction, average="macro")
+    accuracy, precision, recall, f1 = performance( y_true,y_prediction, average="binary")
     accuracy_macro, precision_macro, recall_macro, f1_macro = performance( y_true,y_prediction, average="macro")
     accuracy_weighted, precision_weighted, recall_weighted, f1_weighted = performance( y_true,y_prediction, average="weighted")
     accuracy_micro, precision_micro, recall_micro, f1_micro = performance( y_true,y_prediction, average="micro") 
@@ -264,7 +264,7 @@ def train_mode(args):
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Trainable Parameters Model {pytorch_total_params}\n")
     if not args.saved_model_file == "-1":
-        model.load_state_dict( torch.load(args.saved_model_file, map_location="cpu") )
+        model.load_state_dict( torch.load(args.saved_model_file, map_location="cpu"), strict=False )
     model.to(device)
 
     #set up optimizer
@@ -352,11 +352,12 @@ def main():
     parser.add_argument('--lazy', type=str, default="no",
                         help='save model')
     parser.add_argument("--projects", nargs="+", default=["Mockito"])
-    parser.add_argument("--loss", type=str, default="CE", help='[both, CT, CE]')
-
+    parser.add_argument("--loss", type=str, default="both", help='[both, CT, CE]')
+    parser.add_argument('--seed', type = int, default =1234)
     args = parser.parse_args( )
     with open(args.saved_model_path+'/commandline_args.txt', 'w') as f:
         json.dump(args.__dict__, f, indent=2)
+    set_seed(args)
     train_mode(args)
 
     

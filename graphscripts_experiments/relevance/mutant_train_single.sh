@@ -36,6 +36,7 @@ python relevance_mutants_siamese.py --batch_size 256 --num_workers 5  --epochs 5
 --mutant_type no \
 --loss $loss \
 --saved_model_file  $saved_model_file \
+--lazy yes \
 --projects $project
 
 
