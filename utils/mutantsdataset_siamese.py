@@ -20,6 +20,13 @@ class MutantsDataset(InMemoryDataset):
         self.pair_data = torch.load(self.processed_paths[0])
         [ self.pairgraph_labels, self.mutants_splitting ] =  torch.load(self.processed_paths[1])
 
+    def keep_label(self, zeros_label=[ 0 ]):
+        for d in self.data:
+            if d.y in zeros_label:
+                d.y = torch.tensor(0)
+            else:
+                d.y = torch.tensor(1)
+
     def split( self, reshuffle=False, binary=False, splitting_ratio=0.5 ,fixed_size=30):
         if reshuffle or ( not os.path.isfile( os.path.join(self.root,  "data", self.project, f"{splitting_ratio}_train.csv.npy") )):
             if not os.path.isdir( os.path.join(self.root,  "data", self.project) ):
@@ -34,12 +41,7 @@ class MutantsDataset(InMemoryDataset):
                     label.extend([0]*len(self.pair_data[l]))
                     print(f"Label 0 {len(self.pair_data[l])}")
                 else:
-                    if binary:
-                        label.extend([1]*len(self.pair_data[l]))
-                        print(f"Label 1 {len(self.pair_data[l])}")
-                    else:
-                        label.extend([int(l)]*len(self.pair_data[l]))
-                        print(f"Label {l} {len(self.pair_data[l])}")
+                    print(f"Label {l} {len(self.pair_data[l])}")
             
             self.data_size = len(data)
             self.data = data
@@ -52,7 +54,7 @@ class MutantsDataset(InMemoryDataset):
                 indexes = np.arange( len(self.data) )
                 np.random.shuffle(indexes)
                 test_size = int(splitting_ratio*self.data_size)
-                val_size =  int(0.1*self.data_size)
+                val_size =  int(splitting_ratio*self.data_size)
                 test_idx = indexes[:test_size]
                 valid_idx = indexes[test_size: test_size+val_size]
                 train_idx = indexes[test_size+val_size:]
@@ -95,7 +97,11 @@ class MutantsDataset(InMemoryDataset):
         #print(f"Train Data Size {len(train_idx)}, Valid Data Size {len(valid_idx)}, Test Data Size {len(test_idx)}, Num {len(self.mids)}")
         return {'train': torch.tensor(train_idx, dtype = torch.long), 'valid': torch.tensor(valid_idx, dtype = torch.long), 'test': torch.tensor(test_idx, dtype = torch.long)}
            
-    
+    def get_split_index(self, splitting_ratio=0.1):
+        train_idx =  pickle.load( open( os.path.join(self.root,"data",self.project,  f"{splitting_ratio}_train.csv.npy") , "rb") )#pd.read_csv(osp.join(path, 'train.csv'),  header = None).values.T[0]
+        valid_idx = pickle.load( open( os.path.join(self.root,"data",self.project,  f"{splitting_ratio}_valid.csv.npy") , "rb") )#pd.read_csv(osp.join(path, 'valid.csv'),  header = None).values.T[0]
+        test_idx = pickle.load( open( os.path.join(self.root,"data",self.project,  f"{splitting_ratio}_test.csv.npy") , "rb") )#pd.read_csv(osp.join(path, 'test.csv'),  header = None).values.T[0]
+        return {'train': torch.tensor(train_idx, dtype = torch.long), 'valid': torch.tensor(valid_idx, dtype = torch.long), 'test': torch.tensor(test_idx, dtype = torch.long)}
     def get(self, idx):
         data = Data()
         pass
