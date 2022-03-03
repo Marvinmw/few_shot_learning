@@ -202,6 +202,7 @@ def create_dataset(args, dataset_list):
     test_y = []
     for tp in dataset_list:
         if tp != train_project:
+            dataset_inmemory = dataset_list[tp] 
             split_dict = dataset_inmemory.split(reshuffle=False, splitting_ratio=0.1) 
             dataset = dataset_inmemory.data
             test_loader_dic[tp] = DataLoader( dataset, batch_size=min(int(args.batch_size/2),len(dataset)), shuffle=False, num_workers = args.num_workers,follow_batch=['x_s', 'x_t']  )
