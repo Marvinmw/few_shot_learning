@@ -174,12 +174,14 @@ def create_dataset(args, dataset_list):
             dataset_inmemory = dataset_list[tp] 
             split_dict = dataset_inmemory.split(reshuffle=False, splitting_ratio=0.1) 
             dataset = dataset_inmemory.data
+            print(f"{tp} {len(dataset)}")
             if minimum_size > len(dataset):
                 train_project = tp
                 minimum_size = len(dataset)
             #train_dataset.extend( [ dataset[i] for i in split_dict["train"].tolist() ])
             #valid_dataset.extend( [ dataset[i] for i in split_dict["valid"].tolist() ] )
             #test_dataset.extend( [ dataset[i] for i in  split_dict["test"].tolist()] )
+    
     train_dataset_inmemory =   dataset_list[train_project]     
     train_split_dict = train_dataset_inmemory.split(reshuffle=False,  splitting_ratio=0.1)  
     train_data = dataset_inmemory.data
@@ -226,6 +228,7 @@ def projects_dict(args):
     elif len(args.projects) == 1:
         for p in args.projects:
             for pf in glob.glob(f"{args.dataset_path}/{p}_*_fixed"):
+                print(pf)
                 n=os.path.basename(pf)
                 projects[n].append(os.path.basename(pf))
                 name.append( os.path.basename(pf) )
@@ -375,10 +378,10 @@ def main():
                         help='warmup')
     parser.add_argument('--mutant_type', type=str, default="no",
                         help='mutantype')
-    parser.add_argument('--lazy', type=str, default="no",
+    parser.add_argument('--lazy', type=str, default="yes",
                         help='save model')
-    parser.add_argument("--projects", nargs="+", default=["Mockito"])
-    parser.add_argument("--loss", type=str, default="CE", help='[both, CT, CE]')
+    parser.add_argument("--projects", nargs="+", default=["JacksonCore"])
+    parser.add_argument("--loss", type=str, default="both", help='[both, CT, CE]')
 
     args = parser.parse_args( )
     with open(args.saved_model_path+'/commandline_args.txt', 'w') as f:
