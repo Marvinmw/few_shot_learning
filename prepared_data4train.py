@@ -112,38 +112,7 @@ def train(args, model, device, loader, optimizer, loader_val, loader_test, epoch
     epcoh_res.extend( [ evalloss, accuracy_val, precision_val, recall_val, f1_val ] )
     return epcoh_res, res, f1_val
 
-def eval(args, model, device, loader):
-    y_true = []
-    y_prediction = []
-    evalloss = AverageMeter()
-    for step, batch in enumerate(loader):
-        batch = batch.to(device)
-        with torch.no_grad():
-            outputs,x_s, x_t = model(batch)
-            
-            #loss = criterion( outputs, batch.y)
-            if args.loss == "both":
-                loss =  ( criterion( outputs, batch.y) + contrastive_loss( x_s, x_t, 1 - batch.y)    )/2
-            elif args.loss == "CE":
-                loss =  criterion( outputs, batch.y) 
-            elif args.loss == "CT":
-                loss = contrastive_loss( x_s, x_t, 1 - batch.y)
-            else:
-                assert False
-            evalloss.update( loss.item() )         
-        y_true.append(batch.y.cpu())
-        _, predicted_label = torch.max( outputs, dim=1 )
-        y_prediction.append(predicted_label.cpu())
-      
-    y_true = torch.cat(y_true, dim = 0)
-    y_prediction = torch.cat(y_prediction, dim = 0)
-    accuracy, precision, recall, f1 = performance( y_true,y_prediction, average="binary")
-    accuracy_macro, precision_macro, recall_macro, f1_macro = performance( y_true,y_prediction, average="macro")
-    accuracy_weighted, precision_weighted, recall_weighted, f1_weighted = performance( y_true,y_prediction, average="weighted")
-    accuracy_micro, precision_micro, recall_micro, f1_micro = performance( y_true,y_prediction, average="micro") 
-    result = {"eval_accuracy":accuracy, "eval_precision":precision, "eval_recall":recall,"eval_f1": f1, "macro":[accuracy_macro, precision_macro, recall_macro, f1_macro],
-    "weighted":[accuracy_weighted, precision_weighted, recall_weighted, f1_weighted], "micro":[accuracy_micro, precision_micro, recall_micro, f1_micro]}
-    return evalloss.avg, accuracy, precision, recall, f1, result
+
 
 import glob
 def fecth_datalist(args, projects):
@@ -206,10 +175,7 @@ def projects_dict(args):
 
 
 def train_mode(args):
-    os.makedirs( args.saved_model_path, exist_ok=True)
-    if args.graph_pooling == "set2set":
-        args.graph_pooling = [2, args.graph_pooling]
-
+   
     torch.manual_seed(0)
     np.random.seed(0)
     device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
@@ -219,17 +185,11 @@ def train_mode(args):
     
     projects, namelist = projects_dict(args)
     
-    train_projects = []
-    klist = list( projects.keys() )
-    for pp in klist:
-                train_projects.extend(projects[pp])
-    orgsavedpat=args.saved_model_path
+    orgsavedpat = args.saved_model_path
 
     dataset_list = fecth_datalist(args, namelist)
 
-    args.saved_model_path = f"{orgsavedpat}"
-    if not os.path.isdir(args.saved_model_path):
-            os.makedirs(args.saved_model_path)
+   
     print(args.saved_model_path)
     
 
@@ -239,66 +199,8 @@ def train_mode(args):
     json.dump(stat, open(os.path.join(args.saved_model_path, "stat.json"), "w")  , indent=6)
     num_class = args.num_class
 
-    #set up model
-    tokenizer_word2vec = TokenIns( 
-            word2vec_file=os.path.join(args.sub_token_path, args.emb_file),
-            tokenizer_file=os.path.join(args.sub_token_path, "fun.model")
-        )
-    embeddings, word_emb_dim, vocab_size = tokenizer_word2vec.load_word2vec_embeddings()
-    encoder = GNN_encoder(args.num_layer,vocab_size, word_emb_dim, args.lstm_emb_dim, num_class, JK = args.JK, drop_ratio = args.dropout_ratio, 
-                            graph_pooling = args.graph_pooling, gnn_type = args.gnn_type, subword_emb=args.subword_embedding,
-                            bidrection=args.bidirection, task="mutants", repWay=args.repWay)
-    pytorch_total_params = sum(p.numel() for p in encoder.parameters() if p.requires_grad)
-    print(f"Trainable Parameters Encoder {pytorch_total_params}\n")
-    
-    encoder.gnn.embedding.fine_tune_embeddings(True)
-    if not args.input_model_file == "-1":
-            encoder.gnn.embedding.init_embeddings(embeddings)
-            print(f"Load Pretraning model {args.input_model_file}")
-            encoder.from_pretrained(args.input_model_file + ".pth", device)
-  
-    pytorch_total_params = sum(p.numel() for p in encoder.parameters() if p.requires_grad)
-    print(f"\nTotal Number of Parameters of Model, {pytorch_total_params}")
-    model = PredictionLinearModelFineTune(600, num_class,encoder,False if args.mutant_type == "no" else True,args.dropratio)
-    pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"Trainable Parameters Model {pytorch_total_params}\n")
-    if not args.saved_model_file == "-1":
-        model.load_state_dict( torch.load(args.saved_model_file, map_location="cpu"), strict=False )
-    model.to(device)
-
-    #set up optimizer
-    optimizer = optim.Adam( model.parameters(), lr=args.lr, weight_decay=args.decay ) 
-    args.max_steps=args.epochs*len( loader)
-    args.save_steps=max(1, len( loader)//10)
-    args.warmup_steps=args.max_steps//5
-    scheduler = linear_schedule(optimizer, num_warmup_steps=args.warmup_steps,
-                                                        num_training_steps=args.max_steps)
-    args.warmup_schedule = False if args.warmup_schedule == "no" else True
-    save_model = False if args.lazy == "yes" else True
-    f0 = open(args.log_file, "w")
-    f1 = open( args.log_file+"_epoch" , "w")
-    f = csv.writer( f0 )
-    ef = csv.writer( f1 )
-    f.writerow(["Accuracy", "Precsion", "Recall", "F1"])
-    ef.writerow(["Accuracy", "Precsion", "Recall", "F1", "Val Loss","Val Accuracy", "Val Precsion", "Val Recall", "Val F1", "Test Loss",
-                        "Test Accuracy", "Test Precsion", "Test Recall", "Test F1"])
-    epoch_res = [ ]
-    if args.loss == "CT":
-        earlystopping = EarlyStopping(monitor="loss", patience=50, verbose=True, path=args.saved_model_path, save_model=save_model)
-    else:
-        earlystopping = EarlyStopping(monitor="f1", patience=50, verbose=True, path=args.saved_model_path, save_model=save_model)
-    
    
-    for epoch in range(1, args.epochs+1):
-        print(" ====epoch === " + str(epoch))
-        performance_model, evalstepres, _  = train(args, model, device, loader, optimizer, loader_val, loader_test,epoch, args.saved_model_path, earlystopping, scheduler, dataset_list)
-        epoch_res.append( performance_model )
-        for r in evalstepres:
-            f.writerow(r)
-    f0.close()
-    for r in epoch_res:
-        ef.writerow(r)
-    f1.close()
+
 
 def main():
     # Training settings

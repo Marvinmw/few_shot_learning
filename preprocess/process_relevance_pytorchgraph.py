@@ -14,14 +14,18 @@ import collections
 import tqdm
 from pathlib import Path
 import shutil
-import matplotlib.pyplot as plt
+import sys
+import os, sys
+
+# setting path
+sys.path.append('../')
 from utils.TokenizerW2V import TokenIns
 import os
 
 Declariation=13
 VariableDeclaration=3
-word2vec_file="tokens/jars/emb_100.txt"
-tokenizer_file="tokens/jars/fun.model"
+word2vec_file="../tokens/jars/emb_100.txt"
+tokenizer_file="../tokens/jars/fun.model"
 
 def nx_to_graph_data_obj_simple(G):
     """
@@ -162,6 +166,7 @@ def preprocess(class_method_id_json, graph_json , rawins_json
             data_geometric.label_r_binary = int( graph_meta_info[method_id]["relevance_label"] )
             data_geometric.label_r_mul = int( graph_meta_info[method_id]["relevance_mutator_label"] )
             data_geometric.org_graph_id = int( graph_meta_info[method_id]["org_graph_id"])
+            data_geometric.on_change = int( graph_meta_info[method_id]["On_Change"])
            # data_geometric.y= int( graph_meta_info[method_id]["label"] )
             graph_id_list.append(  method_id )
         elif datatype == "original":
@@ -174,6 +179,7 @@ def preprocess(class_method_id_json, graph_json , rawins_json
             data_geometric.label_r_binary = -1
             data_geometric.label_r_mul = -1
             data_geometric.org_graph_id = -1
+            data_geometric.on_change = -1
             graph_id_list.append(  int(method_id) )
         else:
             assert False
@@ -196,8 +202,8 @@ def preprocess_relevance(pfolder):
             word2vec_file=word2vec_file,
             tokenizer_file=tokenizer_file
             )
-    nodetype = json.load( open("tokens/instruction_type.json") )
-    edgetype = json.load( open("tokens/edge_type.json") )
+    nodetype = json.load( open("../tokens/instruction_type.json") )
+    edgetype = json.load( open("../tokens/edge_type.json") )
 
     mutant2Graph = {}
     org2Mutant = set()
@@ -238,7 +244,7 @@ def run(data_folder):
 import argparse
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-o", "--output", dest="output", default="./dataset/pittest")
+    parser.add_argument("-o", "--output", dest="output", default="../dataset/pittest")
     parser.add_argument("-i", "--input", dest="input", default="./relevance_java_dot_byteinfo")
     args = parser.parse_args()
     outputfolder = args.output
