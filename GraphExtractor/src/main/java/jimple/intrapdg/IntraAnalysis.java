@@ -263,6 +263,11 @@ public class IntraAnalysis  extends BodyTransformer{
 	@Override
 	protected void internalTransform(Body b, String phaseName, Map<String, String> options) {
 		//int startline = Integer.MAX_VALUE;
+		
+//		if(ss.equals("<ThresholdingOutputStream: void flush()>")) {
+//			System.out.println(ss);
+//		}
+			
 		int endline = -1;
 		int startline = b.getMethod().getJavaSourceStartLineNumber();
 		
@@ -318,7 +323,8 @@ public class IntraAnalysis  extends BodyTransformer{
 		//add control dependence edges
 		ToolFunction.addControlDependenceEdges(graph, intragraph, idList);
 		
-		String signature = b.getMethod().getDeclaration();
+		String bytecodeparameter = b.getMethod().getBytecodeParms();
+		String bytecodesignature = b.getMethod().getBytecodeSignature();
 		String className = b.getMethod().getDeclaringClass().getName();
 		JimpleStmt converter = new JimpleStmt();
 		JSONObject methodinfo = converter.toJson(b.getMethod().makeRef());
@@ -335,6 +341,8 @@ public class IntraAnalysis  extends BodyTransformer{
 			methodinfo.put("normalized_name", splitName);
 		}
 		methodinfo.put("calledmethod", calledmethods);
+		methodinfo.put("bytecodeparameter", bytecodeparameter);
+		methodinfo.put("bytecodesignature", bytecodesignature);
 		methodinfo.put("start", startline);
 		methodinfo.put("end", endline);
 		//Path p = this.createPathByClassName(className);

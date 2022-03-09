@@ -253,12 +253,12 @@ class PairData(Data):
 
 
 
-class MutantsDatasetSingleData(InMemoryDataset):
+class MutantsPairData(InMemoryDataset):
     def __init__(self, root, dataname, project="", transform=None, pre_transform=None, pre_filter=None):
         self.root = root
         self.dataname = dataname
         self.project = project
-        super(MutantsReDataset, self).__init__(root=root, transform=transform,  pre_transform=pre_transform, pre_filter=pre_filter)
+        super(MutantsPairData, self).__init__(root=root, transform=transform,  pre_transform=pre_transform, pre_filter=pre_filter)
         self.pair_data = torch.load(self.processed_paths[0])
         [ self.pairgraph_labels, self.mutants_splitting ] =  torch.load(self.processed_paths[1])
 
@@ -362,25 +362,18 @@ class MutantsDatasetSingleData(InMemoryDataset):
         org = { d.graphID:d for d in org_data_list }
         return org
 
-
     def process(self):        
        # mutanttyper=json.load( open( os.path.join(os.path.join(self.root, "mutant_type.json")) ) )    
-        data = []
-     
         mutant_file_name_list, original_file_name_list = self.raw_file_names
-
         mutants_splitting = collections.defaultdict(list)
-        for file_id in tqdm.tqdm( range(len(mutant_file_name_list)) ):
-            mfile = mutant_file_name_list[file_id]
-            pname = mfile.split("/")[-4]
-            ofile = original_file_name_list[file_id]
-            mutant_data = torch.load(os.path.join( mfile ))
-            mutant_data_list, graph_labels, graph_ids = mutant_data[0], mutant_data[1], mutant_data[2]
-            mutant_data_list = [ inverse_eage(d) for d in mutant_data_list ]
-            data+=mutant_data_list
-            #org_data = self.orginal_grap_mapping( ofile )
-            
-                       
+        #for file_id in tqdm.tqdm( range(len(mutant_file_name_list)) ):
+        mfile = mutant_file_name_list[file_id]
+        pname = mfile.split("/")[-4]
+        ofile = original_file_name_list[file_id]
+        mutant_data = torch.load(os.path.join( mfile ))
+        mutant_data_list, graph_labels, graph_ids = mutant_data[0], mutant_data[1], mutant_data[2]
+        mutant_data_list = [ inverse_eage(d) for d in mutant_data_list ]
+        
         self.data_size = len(data)                        
         torch.save(data, self.processed_paths[0])
         torch.save( [ pairgraph_labels, mutants_splitting ], self.processed_paths[1] )

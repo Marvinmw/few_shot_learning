@@ -57,11 +57,11 @@ def nx_to_graph_data_obj_simple(G):
     if len(G.edges()) > 0:  
         edges_list = []
         edge_label_list = []
-        edge_node_type_list = []
+       # edge_node_type_list = []
         for i, j, edge in G.edges(data=True):
             edge_type =  edge['label'] 
             edges_list.append((i, j))
-            edge_node_type_list.append(edge['type'])
+          #  edge_node_type_list.append(edge['type'])
             edge_label_list.append(edge_type)
             # edges_list.append((j, i))
             # edge_type_list.append(edge_type)
@@ -77,12 +77,12 @@ def nx_to_graph_data_obj_simple(G):
         # edge_type_list_np = np.array(edge_type_list)
         # print(np.array(edge_type_list))
         edge_attr = torch.tensor(np.array(edge_label_list), dtype=torch.long)
-        edge_node_attr =  torch.tensor(np.array(edge_node_type_list), dtype=torch.long)
+       # edge_node_attr =  torch.tensor(np.array(edge_node_type_list), dtype=torch.long)
         #print(edge_attr.size())
     else:   # mol has no bonds
         edge_index = torch.empty((2, 0), dtype=torch.long)
         edge_attr = torch.empty((0), dtype=torch.long)
-        edge_node_attr = torch.empty((2, 0), dtype=torch.long)
+        #edge_node_attr = torch.empty((2, 0), dtype=torch.long)
         dv_mask =  torch.empty((0), dtype=torch.long)
 
     assert edge_index.shape[-1] == len(edge_attr), f"{edge_index}, {edge_attr.shape}, {len(G.nodes()) }"
@@ -96,16 +96,15 @@ def nx_to_graph_data_obj_simple(G):
 
      
 def preprocess(class_method_id_json, graph_json , rawins_json
-    , nodetype, edgetype, tokenizer_word2vec, dataname, graph_ids, datatype, outputdir, mutant_types):
+    , nodetype, edgetype, tokenizer_word2vec, dataname, graph_meta_info, datatype, outputdir):
     inputgraph_meta = json.load( open( graph_json ) )
     rawins_meta = json.load( open( rawins_json ) )
     graph_id_list = [ ]
     graph_labels = []
     data_list = []
     print(class_method_id_json)
-    for method_id in graph_ids:       
-        if method_id not in inputgraph_meta:
-            continue        
+    for method_id in graph_meta_info:       
+        assert   method_id in  inputgraph_meta
         graph_string = inputgraph_meta[ method_id ]
         instructions = {}
         if method_id not in rawins_meta:
@@ -154,32 +153,42 @@ def preprocess(class_method_id_json, graph_json , rawins_json
         # print(data_geometric.y )
         data_geometric.graphID = int(method_id) 
         if datatype == "mutants":
-            data_geometric.mutantID = int(graph_ids[method_id]["mid"])
-            data_geometric.interaction = int(graph_ids[method_id]["interaction"])
-            data_geometric.mutant_type = int(mutant_types[graph_ids[method_id]["mutators"]])
-            data_geometric.graph_label = int( graph_ids[method_id]["label"] )
-            data_geometric.org_graph_id = int( graph_ids[method_id]["org_graph_id"])
-            data_geometric.y= int( graph_ids[method_id]["label"] )
+            data_geometric.mutantID = int(graph_meta_info[method_id]["mid"])
+            data_geometric.interaction_mid = int(graph_meta_info[method_id]["interaction"])
+            data_geometric.interaction_graph_id = int(graph_meta_info[method_id]["interaction_mutant_graph_id"])
+            data_geometric.mutant_type = int(graph_meta_info[method_id]["mutator_label"])
+            data_geometric.label_k_binary = int( graph_meta_info[method_id]["killed_label"] )
+            data_geometric.label_k_mul = int( graph_meta_info[method_id]["killabel_mutator_label"] )
+            data_geometric.label_r_binary = int( graph_meta_info[method_id]["relevance_label"] )
+            data_geometric.label_r_mul = int( graph_meta_info[method_id]["relevance_mutator_label"] )
+            data_geometric.org_graph_id = int( graph_meta_info[method_id]["org_graph_id"])
+           # data_geometric.y= int( graph_meta_info[method_id]["label"] )
             graph_id_list.append(  method_id )
         elif datatype == "original":
             data_geometric.mutantID = -1
-            data_geometric.graph_label = -1
-            data_geometric.y = -1
+            data_geometric.interaction_mid = -1
+            data_geometric.interaction_graph_id = -1
+            data_geometric.mutant_type = -1
+            data_geometric.label_k_binary = -1
+            data_geometric.label_k_mul = -1
+            data_geometric.label_r_binary = -1
+            data_geometric.label_r_mul = -1
+            data_geometric.org_graph_id = -1
             graph_id_list.append(  int(method_id) )
         else:
             assert False
         data_list.append( data_geometric  )
-        graph_labels.append( data_geometric.graph_label )
+        #graph_labels.append( data_geometric.graph_label )
         
         del g_meta
         del simple_graph
-    torch.save([data_list,graph_labels, graph_id_list ], osp.join(outputdir, f"{dataname}.pt"))
+    torch.save([data_list, graph_id_list ], osp.join(outputdir, f"{dataname}.pt"))
     return len(data_list)
 
 
 def preprocess_relevance(pfolder):
     mutant_meta = json.load( open( os.path.join(pfolder, "mutants_info_graph_ids.json") ) )
-    mutant_types = json.load( open( os.path.join(pfolder, "mutants_type.json") ) )
+   # mutant_types = json.load( open( os.path.join(pfolder, "mutants_type.json") ) )
     if mutant_meta is None:
         print(f"========================= {pfolder}")
         return
@@ -193,28 +202,35 @@ def preprocess_relevance(pfolder):
     mutant2Graph = {}
     org2Mutant = set()
     for mutant_id in mutant_meta:
-         mutant_meta[ mutant_id ]["mid"] = mutant_id
-         mutant2Graph[mutant_meta[mutant_id]["mutant_graph_id"]] = mutant_meta[ mutant_id ]
-         org2Mutant.add( mutant_meta[mutant_id]["org_graph_id"] )
+        mutant_meta[ mutant_id ]["mid"] = mutant_id
+        assert mutant_meta[mutant_id]["mutant_graph_id"] not in mutant2Graph
+        mutant2Graph[mutant_meta[mutant_id]["mutant_graph_id"]] = mutant_meta[ mutant_id ]
+        org2Mutant.add( mutant_meta[mutant_id]["org_graph_id"] )
 
     tasks = { "original":org2Mutant, "mutants":mutant2Graph }
     pid = os.path.basename( pfolder )
-    for k,v in tasks.items():
-        outputdir = os.path.join( outputfolder, pid, "raw", k, "graph")
-        os.makedirs(outputdir, exist_ok=True)
-        class_method_id_json = os.path.join( pfolder, k, "class_method_id_mapping.json" )
-        rawins_json = os.path.join(pfolder, k, "RawIns.json")
-        for dataname in [ "DV_CFG", "DV_PDG" , "ORG_PDG" , "ORG_CFG"]: 
-            graph_json = os.path.join(pfolder, k, f"{dataname}.json")
-            preprocess(class_method_id_json, graph_json , rawins_json
-                , nodetype, edgetype, tokenizer_word2vec, dataname,  v, k,outputdir, mutant_types)
+    try:
+        for k,v in tasks.items():
+            outputdir = os.path.join( outputfolder, pid, "raw", k, "graph")
+            os.makedirs(outputdir, exist_ok=True)
+            class_method_id_json = os.path.join( pfolder, k, "class_method_id_mapping.json" )
+            rawins_json = os.path.join(pfolder, k, "RawIns.json")
+            for dataname in [ "DV_CFG", "DV_PDG" , "ORG_PDG" , "ORG_CFG"]: 
+                graph_json = os.path.join(pfolder, k, f"{dataname}.json")
+                preprocess(class_method_id_json, graph_json , rawins_json
+                    , nodetype, edgetype, tokenizer_word2vec, dataname,  v, k,outputdir)
+    except Exception as e:
+        print(e)
+        outputdir = os.path.join( outputfolder, pid)
+        shutil.rmtree(outputdir)
 
     
 def run(data_folder):
     eggs = []
     for project in os.listdir( data_folder ):
         pfolder = os.path.join( data_folder, project )   
-        eggs.append( pfolder )
+        for c in os.listdir( os.path.join( pfolder ) ):
+            eggs.append(  os.path.join( pfolder, c ) )
     with Pool(15) as p:
         p.map(preprocess_relevance, eggs)
 
@@ -222,8 +238,8 @@ def run(data_folder):
 import argparse
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-o", "--output", dest="output", default="./dataset/relevant")
-    parser.add_argument("-i", "--input", dest="input", default="./dataset/relevant_raw/")
+    parser.add_argument("-o", "--output", dest="output", default="./dataset/pittest")
+    parser.add_argument("-i", "--input", dest="input", default="./relevance_java_dot_byteinfo")
     args = parser.parse_args()
     outputfolder = args.output
     run( args.input  )

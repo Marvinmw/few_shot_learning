@@ -167,7 +167,6 @@ def create_dataset(args, train_projects, dataset_list):
             valid_dataset.extend( [ dataset[i] for i in split_dict["valid"].tolist() ] )
             test_dataset.extend( [ dataset[i] for i in  split_dict["test"].tolist()] )
     y = [ d.y.item() for d in train_dataset ]
-    
     train_stat = collections.Counter(y)
     train_dataset = balanced_oversample(train_dataset, y)
     loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])

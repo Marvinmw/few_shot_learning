@@ -9,8 +9,8 @@ jimple/cmd/MyOptions.class
 jimple/graph/AbstractNode.class
 jimple/graph/ToolFunction.class
 jimple/intrapdg/IntraAnalysis.class
-jimple/InterProcedureAnalysis.class
 jimple/graph/NodeType.class
+jimple/InterProcedureAnalysis.class
 jimple/IntraProcedureAnalysis.class
 jimple/graph/Node.class
 jimple/io/ExportGraphDot.class

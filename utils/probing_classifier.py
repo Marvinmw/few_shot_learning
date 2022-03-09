@@ -36,38 +36,31 @@ class PredictionLinearModelFineTune( nn.Module ):
         else:
             self.dense = nn.Linear(in_dim*2*2, in_dim*2)
         self.dropout = nn.Dropout(dropratio)
-        #self.out_proj = nn.Linear( in_dim*2, out_dim)
-        self.out_proj1 = nn.Linear( in_dim, out_dim)
-        self.out_proj2 = nn.Linear( in_dim*2, out_dim)
+        self.out_proj = nn.Linear( in_dim*2, out_dim)
         self.type_embeddings = nn.Embedding(9, in_dim//3, padding_idx=0)
         self.oprand1_embeddings =  nn.Embedding(34, in_dim//3, padding_idx=0)
         self.oprand2_embeddings =  nn.Embedding(34, in_dim//3, padding_idx=0)
        # self.bilinear = nn.Bilinear(600, 600, 600, bias=False)
         #self.alpha = nn.Parameter(torch.tensor(0.), requires_grad=True)
    
-    def forward(self, batch, args=None):
+    def forward(self, batch):
         x_s,_,  _ = self.encoder.getVector(batch.x_s, batch.edge_index_s, batch.edge_attr_s, batch.x_s_batch, batch.ins_length_s)   
         x_t,_,  _ = self.encoder.getVector(batch.x_t, batch.edge_index_t, batch.edge_attr_t, batch.x_t_batch, batch.ins_length_t)  
         
-        #x0 = torch.square(torch.sub(x_s, x_t))
-        if args.loss == "both":
-            x2 = torch.abs( torch.sub(x_s, x_t) )
-            return self.out_proj1(x2), x_s, x_t
+        x0 = torch.square(torch.sub(x_s, x_t))
+        x2 = torch.sub(x_s, x_t)
+        if self.addedMutantType:
+            mx=self.type_embeddings(batch.type) 
+            op1=self.oprand1_embeddings(batch.operand1)
+            op2=self.oprand2_embeddings(batch.operand2)
+            x = torch.cat( (x_s, x_t, x2, x0, mx, op1, op2) , dim=1)
         else:
-            x2 = torch.abs( torch.cat((x_s, x_t)) )
-            return self.out_proj2(x2), x_s, x_t
-        # if self.addedMutantType:
-        #     mx=self.type_embeddings(batch.type) 
-        #     op1=self.oprand1_embeddings(batch.operand1)
-        #     op2=self.oprand2_embeddings(batch.operand2)
-        #     x = torch.cat( (x_s, x_t, x2, x0, mx, op1, op2) , dim=1)
-        # else:
-        #     x = torch.cat( (x_s, x_t,x2, x0) , dim=1)
-        # x = self.dropout(x)
-        # x = self.dense(x)
-        # x = torch.tanh(x)
-        # x = self.dropout(x)
-        
+            x = torch.cat( (x_s, x_t,x2, x0) , dim=1)
+        x = self.dropout(x)
+        x = self.dense(x)
+        x = torch.tanh(x)
+        x = self.dropout(x)
+        return self.out_proj(x), x_s, x_t
     
     def loadWholeModel(self, model_file, device, maps={} ):
         gnn_weights = torch.load(model_file,  map_location="cpu")

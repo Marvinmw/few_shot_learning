@@ -6,3 +6,15 @@ results/
 subtokens/
 tokens/
 utils/__pycache__/
+preprocess/debug/
+preprocess/extract_graph_failed_projects/
+preprocess/failed_projects/
+preprocess/fom_export/
+preprocess/milosdataset/
+preprocess/relevance_java_bytecode/
+preprocess/relevance_java_dot_byteinfo/
+preprocess/relevance_java_dot/
+preprocess/debug_info_mutant.json
+preprocess/debug_info.json
+tmp/
+

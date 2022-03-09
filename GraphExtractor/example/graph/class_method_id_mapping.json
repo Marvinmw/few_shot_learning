@@ -1,1 +1,186 @@
-{"Example":{"0":{"signature":"<Example: void <init>()>","name":"<init>","normalized_name":"example","Jimple":"SootMethodRef","params":{},"class":"Example","return":"void","calledmethod":{}},"1":{"signature":"<Example: int max(int,int)>","name":"max","normalized_name":"max","Jimple":"SootMethodRef","params":{"0":"int","1":"int"},"class":"Example","return":"int","calledmethod":{}}}}
+{
+  "ThresholdingOutputStream" : {
+    "0" : {
+      "bytecodeparameter" : "I",
+      "signature" : "<ThresholdingOutputStream: void <init>(int)>",
+      "bytecodesignature" : "<ThresholdingOutputStream: <init>(I)V>",
+      "name" : "<init>",
+      "start" : 73,
+      "normalized_name" : "thresholding|output|stream",
+      "Jimple" : "SootMethodRef",
+      "end" : 76,
+      "params" : {
+        "0" : "int"
+      },
+      "class" : "ThresholdingOutputStream",
+      "return" : "void",
+      "calledmethod" : { }
+    },
+    "11" : {
+      "bytecodeparameter" : "J",
+      "signature" : "<ThresholdingOutputStream: void setByteCount(long)>",
+      "bytecodesignature" : "<ThresholdingOutputStream: setByteCount(J)V>",
+      "name" : "setByteCount",
+      "start" : 246,
+      "normalized_name" : "set|byte|count",
+      "Jimple" : "SootMethodRef",
+      "end" : 248,
+      "params" : {
+        "0" : "long"
+      },
+      "class" : "ThresholdingOutputStream",
+      "return" : "void",
+      "calledmethod" : { }
+    },
+    "1" : {
+      "bytecodeparameter" : "I",
+      "signature" : "<ThresholdingOutputStream: void write(int)>",
+      "bytecodesignature" : "<ThresholdingOutputStream: write(I)V>",
+      "name" : "write",
+      "start" : 91,
+      "normalized_name" : "write",
+      "Jimple" : "SootMethodRef",
+      "end" : 95,
+      "params" : {
+        "0" : "int"
+      },
+      "class" : "ThresholdingOutputStream",
+      "return" : "void",
+      "calledmethod" : { }
+    },
+    "2" : {
+      "bytecodeparameter" : "[B",
+      "signature" : "<ThresholdingOutputStream: void write(byte[])>",
+      "bytecodesignature" : "<ThresholdingOutputStream: write([B)V>",
+      "name" : "write",
+      "start" : 108,
+      "normalized_name" : "write",
+      "Jimple" : "SootMethodRef",
+      "end" : 112,
+      "params" : {
+        "0" : "byte[]"
+      },
+      "class" : "ThresholdingOutputStream",
+      "return" : "void",
+      "calledmethod" : { }
+    },
+    "3" : {
+      "bytecodeparameter" : "[BII",
+      "signature" : "<ThresholdingOutputStream: void write(byte[],int,int)>",
+      "bytecodesignature" : "<ThresholdingOutputStream: write([BII)V>",
+      "name" : "write",
+      "start" : 127,
+      "normalized_name" : "write",
+      "Jimple" : "SootMethodRef",
+      "end" : 131,
+      "params" : {
+        "0" : "byte[]",
+        "1" : "int",
+        "2" : "int"
+      },
+      "class" : "ThresholdingOutputStream",
+      "return" : "void",
+      "calledmethod" : { }
+    },
+    "4" : {
+      "bytecodeparameter" : "",
+      "signature" : "<ThresholdingOutputStream: void flush()>",
+      "bytecodesignature" : "<ThresholdingOutputStream: flush()V>",
+      "name" : "flush",
+      "start" : -1,
+      "normalized_name" : "flush",
+      "Jimple" : "SootMethodRef",
+      "end" : -1,
+      "params" : { },
+      "class" : "ThresholdingOutputStream",
+      "return" : "void",
+      "calledmethod" : { }
+    },
+    "5" : {
+      "bytecodeparameter" : "",
+      "signature" : "<ThresholdingOutputStream: void close()>",
+      "bytecodesignature" : "<ThresholdingOutputStream: close()V>",
+      "name" : "close",
+      "start" : 157,
+      "normalized_name" : "close",
+      "Jimple" : "SootMethodRef",
+      "end" : 165,
+      "params" : { },
+      "class" : "ThresholdingOutputStream",
+      "return" : "void",
+      "calledmethod" : { }
+    },
+    "6" : {
+      "bytecodeparameter" : "",
+      "signature" : "<ThresholdingOutputStream: int getThreshold()>",
+      "bytecodesignature" : "<ThresholdingOutputStream: getThreshold()I>",
+      "name" : "getThreshold",
+      "start" : 177,
+      "normalized_name" : "get|threshold",
+      "Jimple" : "SootMethodRef",
+      "end" : 178,
+      "params" : { },
+      "class" : "ThresholdingOutputStream",
+      "return" : "int",
+      "calledmethod" : { }
+    },
+    "7" : {
+      "bytecodeparameter" : "",
+      "signature" : "<ThresholdingOutputStream: long getByteCount()>",
+      "bytecodesignature" : "<ThresholdingOutputStream: getByteCount()J>",
+      "name" : "getByteCount",
+      "start" : 188,
+      "normalized_name" : "get|byte|count",
+      "Jimple" : "SootMethodRef",
+      "end" : 189,
+      "params" : { },
+      "class" : "ThresholdingOutputStream",
+      "return" : "long",
+      "calledmethod" : { }
+    },
+    "8" : {
+      "bytecodeparameter" : "",
+      "signature" : "<ThresholdingOutputStream: boolean isThresholdExceeded()>",
+      "bytecodesignature" : "<ThresholdingOutputStream: isThresholdExceeded()Z>",
+      "name" : "isThresholdExceeded",
+      "start" : 201,
+      "normalized_name" : "is|threshold|exceeded",
+      "Jimple" : "SootMethodRef",
+      "end" : 202,
+      "params" : { },
+      "class" : "ThresholdingOutputStream",
+      "return" : "boolean",
+      "calledmethod" : { }
+    },
+    "9" : {
+      "bytecodeparameter" : "I",
+      "signature" : "<ThresholdingOutputStream: void checkThreshold(int)>",
+      "bytecodesignature" : "<ThresholdingOutputStream: checkThreshold(I)V>",
+      "name" : "checkThreshold",
+      "start" : 220,
+      "normalized_name" : "check|threshold",
+      "Jimple" : "SootMethodRef",
+      "end" : 226,
+      "params" : {
+        "0" : "int"
+      },
+      "class" : "ThresholdingOutputStream",
+      "return" : "void",
+      "calledmethod" : { }
+    },
+    "10" : {
+      "bytecodeparameter" : "",
+      "signature" : "<ThresholdingOutputStream: void resetByteCount()>",
+      "bytecodesignature" : "<ThresholdingOutputStream: resetByteCount()V>",
+      "name" : "resetByteCount",
+      "start" : 233,
+      "normalized_name" : "reset|byte|count",
+      "Jimple" : "SootMethodRef",
+      "end" : 236,
+      "params" : { },
+      "class" : "ThresholdingOutputStream",
+      "return" : "void",
+      "calledmethod" : { }
+    }
+  }
+}
