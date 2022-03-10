@@ -109,6 +109,7 @@ class MutantKilledDataset(InMemoryDataset):
             original_graph_dict[ g.graphID  ] = g
         
         for mutant_graph in mutant_data_list:
+                mid = mutant_graph.mutantID
                 kill_label = mutant_graph.label_k_binary
                 origina_graph_id = mutant_graph.org_graph_id
                 org_graph = original_graph_dict[origina_graph_id]
@@ -116,7 +117,7 @@ class MutantKilledDataset(InMemoryDataset):
                     continue
                 kill_mutant_data.append(PairData(mutant_graph.edge_index,  mutant_graph.x, mutant_graph.edge_attr,mutant_graph.ins_length, 
                                                             org_graph.edge_index,  org_graph.x, org_graph.edge_attr, org_graph.ins_length, 
-                                                            torch.tensor(mutant_graph.label_k_binary), torch.tensor(mutant_graph.label_k_mul), torch.tensor(mutant_graph.mutant_type) ))
+                                                            torch.tensor(mutant_graph.label_k_binary), torch.tensor(mutant_graph.label_k_mul), torch.tensor(mutant_graph.mutant_type), torch.tensor(mid) ))
                 kill_mutant_binary_labels.append( mutant_graph.label_k_binary )
                 kill_mutant_multiple_labels.append( mutant_graph.label_k_mul )
         print(  os.path.dirname(self.processed_paths[0]) )                                               
