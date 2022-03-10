@@ -15,7 +15,7 @@ sw=lstm
 jk=sum
 lstm_emb_dim=150
 mkdir -p $output
-python mutants_siamese.py --batch_size 256 --num_workers 5  --epochs 30 --num_layer 5 \
+python mutants_siamese.py --batch_size 256 --num_workers 5  --epochs 20 --num_layer 5 \
 --subword_embedding  $sw \
 --lstm_emb_dim $lstm_emb_dim \
 --graph_pooling $gp \

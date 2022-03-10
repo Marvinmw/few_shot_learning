@@ -58,14 +58,7 @@ def train(args, model, device, loader, optimizer, scheduler):
             y = batch.by
         else:
             y = batch.my
-        if args.loss == "both":
-            loss =   ( criterion( pred, y)  + contrastive_loss(  x_s, x_t,  1-y) )/2
-        elif args.loss == "CE":
-            loss =  criterion( pred, y) 
-        elif args.loss == "CT":
-            loss = contrastive_loss( x_s, x_t, 1 - y)
-        else:
-            assert False
+       
         if args.loss == "both":
             loss =  lam * criterion( pred, y) + contrastive_loss( x_s, x_t, 1 - y)  * (1 - lam)
         elif args.loss == "CE":
@@ -188,14 +181,7 @@ def eval(args, model, device, loader):
                 y = batch.by
             else:
                 y = batch.my
-            if args.loss == "both":
-                loss =   ( criterion( outputs, y)  + contrastive_loss(  x_s, x_t,  1-y) )/2
-            elif args.loss == "CE":
-                loss =  criterion( outputs, y) 
-            elif args.loss == "CT":
-                loss = contrastive_loss( x_s, x_t, 1 - y)
-            else:
-                assert False
+
             if args.loss == "both":
                 loss =  lam * criterion( outputs, y) + contrastive_loss( x_s, x_t, 1 - y)  * (1 - lam)
             elif args.loss == "CE":
