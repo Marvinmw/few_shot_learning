@@ -129,7 +129,7 @@ def evalutaion(args, model, device, loader_val, epoch, earlystopping ):
     global best_f1
     global view_test_f1
     model.eval()
-    evalloss, accuracy_val, precision_val, recall_val, f1_val, result = eval(args, model, device, loader_val)
+    evalloss, accuracy_val, precision_val, recall_val, f1_val, result,mid_list, y_true, y_prediction  = eval(args, model, device, loader_val)
     earlystopping(f1_val, model, performance={"val_f1":f1_val, "epoch":epoch,
                                             "val":[evalloss, accuracy_val, precision_val, recall_val, f1_val, result]})
       
