@@ -246,7 +246,7 @@ class MutantRelevanceDataset(InMemoryDataset):
                     pos_graph = on_change_graph[ interacted_mid ] 
                     relevance_mutant_data.append(PairData(mutant_graph.edge_index,  mutant_graph.x, mutant_graph.edge_attr,mutant_graph.ins_length, 
                                                             pos_graph.edge_index,  pos_graph.x, pos_graph.edge_attr, pos_graph.ins_length, 
-                                                            torch.tensor(mutant_graph.label_r_binary), torch.tensor(mutant_graph.label_r_mul), torch.tensor(mutant_graph.mutant_type) ))
+                                                            torch.tensor(mutant_graph.label_r_binary), torch.tensor(mutant_graph.label_r_mul), torch.tensor(mutant_graph.mutant_type), torch.tensor(mid) ))
                     relevance_mutant_binary_labels.append( mutant_graph.label_r_binary )
                     relevance_mutant_multiple_labels.append( mutant_graph.label_r_mul )
                 
@@ -273,7 +273,7 @@ class MutantRelevanceDataset(InMemoryDataset):
 
                         relevance_mutant_data.append(PairData(mutant_graph.edge_index,  mutant_graph.x, mutant_graph.edge_attr,mutant_graph.ins_length, 
                                                                 c_graph.edge_index,  c_graph.x, c_graph.edge_attr, c_graph.ins_length, 
-                                                                torch.tensor( 0 ), torch.tensor(ml), torch.tensor(mutant_graph.mutant_type) ))
+                                                                torch.tensor( 0 ), torch.tensor(ml), torch.tensor(mutant_graph.mutant_type), torch.tensor(mid) ))
         print(  os.path.dirname(self.processed_paths[0]) )
         if not os.path.isdir( os.path.dirname(self.processed_paths[0]) ):
            os.makedirs( os.path.dirname(self.processed_paths[0]), exist_ok=True )          
@@ -361,7 +361,7 @@ def balanced_oversample(x, y):
 class PairData(Data):
     
     def __init__(self, edge_index_s=None, x_s=None, edge_attr_s=None, ins_length_s=None, edge_index_t=None, x_t=None,  edge_attr_t=None, 
-                        ins_length_t=None,by=None,my=None, type=None):
+                        ins_length_t=None,by=None,my=None, type=None, mid=None):
         super(PairData, self).__init__()
         self.edge_index_s = edge_index_s
         self.x_s = x_s
@@ -375,6 +375,7 @@ class PairData(Data):
         self.by = by
         self.my = my
         self.type=type
+        self.mid = mid
         if x_s is None:
              print("Debug")
 

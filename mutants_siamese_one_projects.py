@@ -233,12 +233,7 @@ def create_dataset(args, train_projects, dataset_list):
    
     data = []
     for tp in train_projects:
-            if args.task == "killed":
-                dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{tp}" , dataname=args.dataset, project=tp )
-            elif args.task == "relevance":
-                dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{tp}" , dataname=args.dataset, project=tp, probability=0.8 )
-            else:
-                assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
+            dataset_inmemory = dataset_list[tp]
             dataset = dataset_inmemory.data
             data.extend( dataset )
     #data=data[:2000] # for local debug
@@ -264,10 +259,6 @@ def create_dataset(args, train_projects, dataset_list):
 
     return loader, loader_val, train_projects, {"train":train_stat, "val":val_stat }
 
-def fetch_dataset(args, dataset_inmemory):
-    dataset = dataset_inmemory.data
-    loader_test = DataLoader( dataset, batch_size=int(args.batch_size/2), shuffle=False, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
-    return loader_test
 
 def projects_dict(args):
     projects = collections.defaultdict(list)
