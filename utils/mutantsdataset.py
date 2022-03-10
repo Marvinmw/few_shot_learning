@@ -286,7 +286,7 @@ class MutantRelevanceDataset(InMemoryDataset):
         json.dump(mstat, open(self.processed_paths[3], "w") , indent=6)
 
 
-def balanced_subsample(x,y,mid_list,subsample_size=1.0):
+def balanced_subsample(x,y,subsample_size=1.0):
 
     class_xs = []
     min_elems = None
@@ -294,8 +294,8 @@ def balanced_subsample(x,y,mid_list,subsample_size=1.0):
     for yi in np.unique(y):
         idx =  [ id ==yi for id in y ]
         elems = list(compress(x, idx )) 
-        mid =  list(compress(mid_list, idx )) 
-        class_xs.append((yi, elems, mid))
+        #mid =  list(compress(mid_list, idx )) 
+        class_xs.append((yi, elems))
         print(f"label {yi}, Number {len(elems)}")
         if min_elems == None or len(elems) < min_elems:
             min_elems = len(elems)
@@ -306,20 +306,20 @@ def balanced_subsample(x,y,mid_list,subsample_size=1.0):
 
     xs = []
     ys = []
-    mids= []
-    for ci,this_xs, this_mids in class_xs:
+    #mids= []
+    for ci,this_xs in class_xs:
         index = [i for i in range(len(this_xs))]
         if len(this_xs) > use_elems:
             np.random.shuffle(index)
 
         x_ = [ this_xs[i] for i in index[:use_elems] ]  #this_xs[:use_elems]
-        mid_ = [ this_mids[i] for i in index[:use_elems] ]
+        #mid_ = [ this_mids[i] for i in index[:use_elems] ]
         y_ = np.empty(use_elems)
         y_.fill(ci)
 
         xs.extend(x_)
         ys.extend(y_.tolist())
-        mids.extend(mid_)
+        #mids.extend(mid_)
 
     return xs       
 
@@ -506,7 +506,7 @@ class MyOwnDataset(Dataset):
         mstat = collections.Counter(relevance_mutant_multiple_labels)
         json.dump(bstat, open(self.processed_paths[2], "w") , indent=6)
         json.dump(mstat, open(self.processed_paths[3], "w") , indent=6)
-        
+
     def len(self):
         return len(self.processed_file_names)
 

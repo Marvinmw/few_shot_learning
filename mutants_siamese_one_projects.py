@@ -1,7 +1,7 @@
 import sys
 # setting path
 sys.path.append('../')
-from utils.mutantsdataset import MutantKilledDataset, MutantRelevanceDataset
+from utils.mutantsdataset import MutantKilledDataset, MutantRelevanceDataset, balanced_subsample
 import argparse
 import json
 from torch_geometric.data import DataLoader
@@ -265,6 +265,10 @@ def create_dataset(args, train_projects, dataset_list):
             data.extend( dataset )
     #data=data[:2000] # for local debug
     #args.batch_size=64 # for local debug
+    if args.task =="relevance":
+        y = [ d.by.item() for d in data ]
+        data_stat = collections.Counter(y)
+        data = balanced_subsample(data, y)
     random.shuffle(data)
     val_size = int(len(data)*0.2)
     train_size = len(data) -val_size
