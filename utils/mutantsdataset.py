@@ -241,7 +241,7 @@ class MutantRelevanceDataset(InMemoryDataset):
                     continue
                 interacted_mid = mutant_graph.interaction_mid
                 pos_graph = None
-                neg_graph_list = []
+                
                 if interacted_mid != -1:
                     pos_graph = on_change_graph[ interacted_mid ] 
                     relevance_mutant_data.append(PairData(mutant_graph.edge_index,  mutant_graph.x, mutant_graph.edge_attr,mutant_graph.ins_length, 
@@ -249,31 +249,31 @@ class MutantRelevanceDataset(InMemoryDataset):
                                                             torch.tensor(mutant_graph.label_r_binary), torch.tensor(mutant_graph.label_r_mul), torch.tensor(mutant_graph.mutant_type), torch.tensor(mid) ))
                     relevance_mutant_binary_labels.append( mutant_graph.label_r_binary )
                     relevance_mutant_multiple_labels.append( mutant_graph.label_r_mul )
-                
+                remaining_graph_list = []
                 for cid in on_change_graph:
                     if cid != interacted_mid:
-                       neg_graph_list.append( on_change_graph[cid] ) 
+                       remaining_graph_list.append( on_change_graph[cid] ) 
 
                 #candiates_list = neg_graph_list
-                random.shuffle(neg_graph_list)
+                random.shuffle(remaining_graph_list)
                 first=True
-                for c_graph in neg_graph_list:
+                for c_graph in remaining_graph_list:
                     r = np.random.uniform(0, 1, size=1)
                     if first or r[0] > self.probability:
                         first = False
                         
-                        relevance_mutant_binary_labels.append( 0 )
-                        ml = None
-                        if mutant_graph.label_r_mul % 2 == 1:
-                            ml = mutant_graph.label_r_mul - 1
-                            relevance_mutant_multiple_labels.append( mutant_graph.label_r_mul - 1 )
-                        else:
-                            ml = mutant_graph.label_r_mul 
-                            relevance_mutant_multiple_labels.append( mutant_graph.label_r_mul  )
+                        relevance_mutant_binary_labels.append( mutant_graph.label_r_binary )
+                        # ml = None
+                        # if mutant_graph.label_r_mul % 2 == 1:
+                        #     ml = mutant_graph.label_r_mul - 1
+                        #     relevance_mutant_multiple_labels.append( mutant_graph.label_r_mul - 1 )
+                        # else:
+                        #     ml = mutant_graph.label_r_mul 
+                        relevance_mutant_multiple_labels.append( mutant_graph.label_r_mul  )
 
                         relevance_mutant_data.append(PairData(mutant_graph.edge_index,  mutant_graph.x, mutant_graph.edge_attr,mutant_graph.ins_length, 
                                                                 c_graph.edge_index,  c_graph.x, c_graph.edge_attr, c_graph.ins_length, 
-                                                                torch.tensor( 0 ), torch.tensor(ml), torch.tensor(mutant_graph.mutant_type), torch.tensor(mid) ))
+                                                                torch.tensor( mutant_graph.label_r_binary ), torch.tensor(mutant_graph.label_r_mul), torch.tensor(mutant_graph.mutant_type), torch.tensor(mid) ))
         print(  os.path.dirname(self.processed_paths[0]) )
         if not os.path.isdir( os.path.dirname(self.processed_paths[0]) ):
            os.makedirs( os.path.dirname(self.processed_paths[0]), exist_ok=True )          
