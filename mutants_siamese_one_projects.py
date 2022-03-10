@@ -170,14 +170,39 @@ def build_model(args, device):
 def test_eval(args, model, device, loader_test):
    
     model.eval()
-    testloss, accuracy_test, precision_test, recall_test, f1_test, result_test = eval(args, model, device, loader_test)
+    testloss, accuracy_test, precision_test, recall_test, f1_test, result_test, mid_list, y_true, y_prediction = eval(args, model, device, loader_test)
+    mutants = list(set(mid_list.detach().numpy().tolist()))
+    mid_list = mid_list.detach().numpy()
+    y_true, y_prediction = y_true.detach().numpy(), y_prediction.detach().numpy()
+    ground_label = [  ]
+    distill_predicted_label = []
+    for mid in mutants:
+        if np.sum(y_true[mid_list==mid]) > 0:
+            ground_label.append(1)
+        else:
+            ground_label.append(0)
+        
+        if np.sum(y_prediction[mid_list==mid]) > 0:
+            distill_predicted_label.append(1)
+        else:
+            distill_predicted_label.append(0)
+    
+    distill_accuracy, distill_precision, distill_recall, distill_f1 = performance( ground_label,distill_predicted_label, average="binary")
+    distill_accuracy_macro, distill_precision_macro, distill_recall_macro, distill_f1_macro = performance( ground_label, distill_predicted_label, average="macro")
+    distill_accuracy_weighted, distill_precision_weighted, distill_recall_weighted, distill_f1_weighted = performance( ground_label, distill_predicted_label, average="weighted")
+    distill_accuracy_micro, distill_precision_micro, distill_recall_micro, distill_f1_micro = performance( ground_label, distill_predicted_label, average="micro") 
+    distill_result = {"eval_accuracy":distill_accuracy, "eval_precision":distill_precision, "eval_recall":distill_recall,"eval_f1": distill_f1, "macro":[distill_accuracy_macro, distill_precision_macro, distill_recall_macro, distill_f1_macro],
+    "weighted":[distill_accuracy_weighted, distill_precision_weighted, distill_recall_weighted, distill_f1_weighted], "micro":[distill_accuracy_micro, distill_precision_micro, distill_recall_micro, distill_f1_micro]}
+
     logger.info(f" Test, Eval Loss {testloss}, Accuracy {accuracy_test}, Precision {precision_test}, Recall {recall_test}, F1 {f1_test}"  )
-    return testloss, accuracy_test, precision_test, recall_test, f1_test, result_test
+    logger.info(f" Test, Distill , Accuracy {distill_accuracy}, Precision {distill_precision}, Recall {distill_recall}, F1 {distill_f1}"  )
+    return testloss, accuracy_test, precision_test, recall_test, f1_test, result_test, distill_result
 
 def eval(args, model, device, loader):
     y_true = []
     y_prediction = []
     evalloss = AverageMeter()
+    mid_list = []
     for step, batch in enumerate(tqdm(loader, desc="Iteration")):
         batch = batch.to(device)
         with torch.no_grad():
@@ -201,18 +226,20 @@ def eval(args, model, device, loader):
                 assert False, f"Wrong loss name {args.loss}"
             evalloss.update( loss.item() )         
         y_true.append(y.cpu())
+        mid_list.append(batch.mid.cpu())
         _, predicted_label = torch.max( outputs, dim=1 )
         y_prediction.append(predicted_label.cpu())
       
     y_true = torch.cat(y_true, dim = 0)
     y_prediction = torch.cat(y_prediction, dim = 0)
+    mid_list = torch.cat(mid_list, dim=0)
     accuracy, precision, recall, f1 = performance( y_true,y_prediction, average="binary")
     accuracy_macro, precision_macro, recall_macro, f1_macro = performance( y_true,y_prediction, average="macro")
     accuracy_weighted, precision_weighted, recall_weighted, f1_weighted = performance( y_true,y_prediction, average="weighted")
     accuracy_micro, precision_micro, recall_micro, f1_micro = performance( y_true,y_prediction, average="micro") 
     result = {"eval_accuracy":accuracy, "eval_precision":precision, "eval_recall":recall,"eval_f1": f1, "macro":[accuracy_macro, precision_macro, recall_macro, f1_macro],
     "weighted":[accuracy_weighted, precision_weighted, recall_weighted, f1_weighted], "micro":[accuracy_micro, precision_micro, recall_micro, f1_micro]}
-    return evalloss.avg, accuracy, precision, recall, f1, result
+    return evalloss.avg, accuracy, precision, recall, f1, result, mid_list, y_true, y_prediction
 
 import glob
 def fecth_datalist(args, projects):
@@ -377,8 +404,8 @@ def train_mode(args, train_project, test_projects, dataset_list):
         dataset_inmemory = dataset_list[tp] 
         test_dataset = dataset_inmemory.data
         loader_test = DataLoader( test_dataset, batch_size=min(int(args.batch_size/2), len(test_dataset)), shuffle=False, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
-        testloss, accuracy_test, precision_test, recall_test, f1_test, result_test = test_eval(args, model, device, loader_test)
-        test_res[tp] = [ testloss, accuracy_test, precision_test, recall_test, f1_test, result_test ]
+        testloss, accuracy_test, precision_test, recall_test, f1_test, result_test, distill_result = test_eval(args, model, device, loader_test)
+        test_res[tp] = [ testloss, accuracy_test, precision_test, recall_test, f1_test, result_test, distill_result ]
     json.dump( test_res, open(os.path.join(args.saved_model_path, "test.json"), "w"), indent=6  )
 
 
