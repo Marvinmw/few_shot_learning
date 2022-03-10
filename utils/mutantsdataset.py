@@ -261,14 +261,19 @@ class MutantRelevanceDataset(InMemoryDataset):
                     r = np.random.uniform(0, 1, size=1)
                     if first or r[0] > self.probability:
                         first = False
-                        relevance_mutant_data.append(PairData(mutant_graph.edge_index,  mutant_graph.x, mutant_graph.edge_attr,mutant_graph.ins_length, 
-                                                                c_graph.edge_index,  c_graph.x, c_graph.edge_attr, c_graph.ins_length, 
-                                                                torch.tensor(mutant_graph.label_r_binary), torch.tensor(mutant_graph.label_r_mul), torch.tensor(mutant_graph.mutant_type) ))
+                        
                         relevance_mutant_binary_labels.append( 0 )
+                        ml = None
                         if mutant_graph.label_r_mul % 2 == 1:
+                            ml = mutant_graph.label_r_mul - 1
                             relevance_mutant_multiple_labels.append( mutant_graph.label_r_mul - 1 )
                         else:
+                            ml = mutant_graph.label_r_mul 
                             relevance_mutant_multiple_labels.append( mutant_graph.label_r_mul  )
+
+                        relevance_mutant_data.append(PairData(mutant_graph.edge_index,  mutant_graph.x, mutant_graph.edge_attr,mutant_graph.ins_length, 
+                                                                c_graph.edge_index,  c_graph.x, c_graph.edge_attr, c_graph.ins_length, 
+                                                                torch.tensor( 0 ), torch.tensor(ml), torch.tensor(mutant_graph.mutant_type) ))
         print(  os.path.dirname(self.processed_paths[0]) )
         if not os.path.isdir( os.path.dirname(self.processed_paths[0]) ):
            os.makedirs( os.path.dirname(self.processed_paths[0]), exist_ok=True )          
