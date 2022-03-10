@@ -329,7 +329,7 @@ def balanced_oversample(x, y):
         if max_elems == None or len(elems) > max_elems:
             max_elems = len(elems)
 
-    use_elems = max_elems
+    use_elems = min(2000, max_elems)
   
     xs = []
     ys = []

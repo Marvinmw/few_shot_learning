@@ -233,7 +233,12 @@ def create_dataset(args, train_projects, dataset_list):
    
     data = []
     for tp in train_projects:
-            dataset_inmemory = dataset_list[tp] 
+            if args.task == "killed":
+                dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{tp}" , dataname=args.dataset, project=tp )
+            elif args.task == "relevance":
+                dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{tp}" , dataname=args.dataset, project=tp, probability=0.8 )
+            else:
+                assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
             dataset = dataset_inmemory.data
             data.extend( dataset )
     #data=data[:2000] # for local debug
