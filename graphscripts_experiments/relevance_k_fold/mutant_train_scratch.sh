@@ -17,7 +17,7 @@ num_class=2
 # collections csv io lang text
 
 
-for train_project in  csv io 
+for train_project in  collections text lang csv io 
 do
 for loss in SCL CE  both
 do
