@@ -15,7 +15,7 @@ from utils.model import  GNN_encoder
 from utils.tools import performance, TokenIns
 from utils.pytorchtools import EarlyStopping
 from utils.AverageMeter import AverageMeter
-from utils.probing_classifier import PredictionLinearModelFineTune
+from utils.classifier import PredictionLinearModelFineTune
 from utils.ContrastiveLoss import ContrastiveLoss 
 import collections
 import random

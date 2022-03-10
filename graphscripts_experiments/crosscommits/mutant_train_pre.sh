@@ -14,31 +14,14 @@
 conda activate graph
 device=0
 num_class=2
-
-
-for loss in CE CT 
+# collections csv io lang text
+for loss in CE CT SCL both
 do
-output_folder=results/mutants_class_contrastive_${num_class}_loss_${loss}/context
-bash mutant_pre_train.sh gat "pretrained_models/context/gat/model_0" ${output_folder}/ attention $device $num_class $loss
+for test_project in collections csv io lang text
+do
+output_folder=results/mutants_relevance_${num_class}_loss_${loss}_rm_${test_project}/context
+bash run.sh gat "pretrained_models/context/gat/model_0" ${output_folder}/ attention $device $num_class $loss $test_project
+done
 done
 
 
-#for i in $(seq 5)
-#do
-#output_folder=results/mutants_class_contrastive_${num_class}/context_${i}
-#bash mutant_prediction.sh gcn "pretrained_models/context/gcn/model_0" ${output_folder}/ attention $device $num_class
-#bash mutant_prediction.sh gin "pretrained_models/context/gin/model_0" ${output_folder}/ attention $device $num_class
-#bash mutant_prediction.sh graphsage "pretrained_models/context/graphsage/model_0" ${output_folder}/ attention $device $num_class
-
-#output_folder=results/mutants_class_contrastive_${num_class}/node_${i}
-#bash mutant_prediction.sh gat "pretrained_models/node/gat/model_0" ${output_folder}/ attention $device $num_class
-#bash mutant_prediction.sh gcn "pretrained_models/node/gcn/model_0" ${output_folder}/ attention $device $num_class
-#bash mutant_prediction.sh gin "pretrained_models/node/gin/model_0" ${output_folder}/ attention $device $num_class
-#bash mutant_prediction.sh graphsage "pretrained_models/node/graphsage/model_0" ${output_folder}/ attention $device $num_class
-
-#output_folder=results/mutants_class_contrastive_${num_class}/vgae_${i}
-#bash mutant_prediction.sh gat "pretrained_models/vgae/gat/model_1" ${output_folder}/ attention $device $num_class
-#bash mutant_prediction.sh gcn "pretrained_models/vgae/gcn/model_1" ${output_folder}/ attention $device $num_class
-#bash mutant_prediction.sh gin "pretrained_models/vgae/gin/model_1" ${output_folder}/ attention $device $num_class
-#bash mutant_prediction.sh graphsage "pretrained_models/vgae/graphsage/model_1" ${output_folder}/ attention $device $num_class
-#done

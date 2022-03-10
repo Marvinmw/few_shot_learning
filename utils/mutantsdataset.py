@@ -1,12 +1,12 @@
 import json
+import collections
 from torch_geometric.data import Data
 from torch_geometric.data import InMemoryDataset
 import torch
 import os
 import numpy as np
 from itertools import compress
-from utils.tools import  inverse_eage
-
+from .tools import  inverse_eage
 
 
 
@@ -17,6 +17,7 @@ class MutantKilledDataset(InMemoryDataset):
         self.project = project
         super(MutantKilledDataset, self).__init__(root=root, transform=transform,  pre_transform=pre_transform, pre_filter=pre_filter)
         self.data = torch.load(self.processed_paths[0])
+        self.data_folder = os.path.dirname( self.processed_paths[0] )
         [ self.kill_mutant_binary_labels, self.kill_mutant_multiple_labels ] =  torch.load(self.processed_paths[1])
 
   
@@ -35,17 +36,58 @@ class MutantKilledDataset(InMemoryDataset):
 
     @property
     def raw_file_names(self):
-        mutant_file_name =  os.path.join( self.root ,f"{self.project}", "raw", "mutants", "graph", f"{self.dataname}.pt")   
-        original_file_name =  os.path.join( self.root ,f"{self.project}", "raw", "original", "graph", f"{self.dataname}.pt")   
+        mutant_file_name =  os.path.join( self.root , "raw", "mutants", "graph", f"{self.dataname}.pt")   
+        original_file_name =  os.path.join( self.root , "raw", "original", "graph", f"{self.dataname}.pt")   
         return mutant_file_name, original_file_name
     
     @property
     def processed_file_names(self):
-        return [ f'killed/kill_processed_{self.dataname}_{self.project}.pt', f"killed/kill_info_{self.project}.pt"]
+        return [ f'killed/kill_processed_{self.dataname}_{self.project}.pt', f"killed/kill_info_{self.project}.pt",
+        f"killed/bstat_{self.dataname}_{self.project}.json", f"killed/mstat_{self.dataname}_{self.project}.json"]
     
     def download(self):
         pass
     
+    def splitting_ratio(self):
+        data_size = len(self.data)
+        index = [ i for i in range(data_size) ]
+        random.shuffle(index)
+        test_size = int( 0.2 * data_size )
+        val_size = int( 0.2 * (data_size - test_size) )
+        test_index = index[ : test_size ]
+        val_index = index[ test_size : test_size+val_size]
+        train_index = index[ test_size+val_size :  ]
+        json.dump( {"test":test_index, "val": val_index, "train": train_index}, open( os.path.join(self.data_folder , "splitting_ratio.json") , "w") , indent=6)
+        return len(test_index),len(val_index),len(train_index)
+    
+    def splitted_fixed(self, label_list, fixed_train=10):
+        data_size = len(self.data)
+        index = [ i for i in range(data_size) ]
+        random.shuffle(index)
+        unique_labels = list(set( label_list ))
+        num_class = len(unique_labels)
+        split_dict = {}
+        for label in unique_labels:
+            bool_index = [ i==label for i in label_list ]
+            selected_data = list(compress( index, bool_index ))
+            split_dict[label] = selected_data
+        
+        train_index = []
+        
+        for l in split_dict:
+            d = split_dict[l]
+            train_index.extend( d[:fixed_train] )
+        
+        remaining_index = [ ]
+        for i in index:
+            if i not in train_index:
+                remaining_index.append(i)
+
+        val_size = int( len( remaining_index ) * 0.4 )
+        val_index = remaining_index[ : val_size ]
+        test_index = remaining_index[val_size:]
+        json.dump( {"test":test_index, "val": val_index, "train": train_index}, open( os.path.join(self.data_folder ,f"splitting_fixed_{num_class}.json") , "w") , indent=6 )
+        return len(test_index),len(val_index),len(train_index)
 
     def process(self):        
         # mutanttyper=json.load( open( os.path.join(os.path.join(self.root, "mutant_type.json")) ) )    
@@ -78,9 +120,14 @@ class MutantKilledDataset(InMemoryDataset):
                 kill_mutant_binary_labels.append( mutant_graph.label_k_binary )
                 kill_mutant_multiple_labels.append( mutant_graph.label_k_mul )
                                                        
-                      
+        if not os.path.isdir( os.path.dirname(self.processed_paths[0]) ):
+           os.makedirs( os.path.dirname(self.processed_paths[0]), exist_ok=True )                 
         torch.save(kill_mutant_data, self.processed_paths[0])
         torch.save( [ kill_mutant_binary_labels, kill_mutant_multiple_labels ], self.processed_paths[1] )
+        bstat = collections.Counter(kill_mutant_binary_labels)
+        mstat = collections.Counter(kill_mutant_multiple_labels)
+        json.dump(bstat, open(self.processed_paths[2], "w") , indent=6)
+        json.dump(mstat, open(self.processed_paths[3], "w") , indent=6)
 
   
 class MutantRelevanceDataset(InMemoryDataset):
@@ -109,13 +156,14 @@ class MutantRelevanceDataset(InMemoryDataset):
 
     @property
     def raw_file_names(self):
-        mutant_file_name =  os.path.join( self.root ,f"{self.project}", "raw", "mutants", "graph", f"{self.dataname}.pt")   
-        original_file_name =  os.path.join( self.root ,f"{self.project}", "raw", "original", "graph", f"{self.dataname}.pt")   
+        mutant_file_name =  os.path.join( self.root , "raw", "mutants", "graph", f"{self.dataname}.pt")   
+        original_file_name =  os.path.join( self.root , "raw", "original", "graph", f"{self.dataname}.pt")   
         return mutant_file_name, original_file_name
     
     @property
     def processed_file_names(self):
-        return [ f'relevance/relevance_processed_{self.dataname}_{self.project}.pt', f"relevance/relevance_info_{self.project}.pt"]
+        return [ f'relevance/relevance_processed_{self.dataname}_{self.project}.pt', f"relevance/relevance_info_{self.dataname}_{self.project}.pt", 
+                f"relevance/bstat_{self.dataname}_{self.project}.json", f"relevance/mstat_{self.dataname}_{self.project}.json"]
     
     def download(self):
         pass
@@ -129,13 +177,15 @@ class MutantRelevanceDataset(InMemoryDataset):
         test_index = index[ : test_size ]
         val_index = index[ test_size : test_size+val_size]
         train_index = index[ test_size+val_size :  ]
-        json.dump( {"test":test_index, "val": val_index, "train": train_index}, open( os.path.join(self.data_folder , "splitting_ratio.json") , "w") )
+        json.dump( {"test":test_index, "val": val_index, "train": train_index}, open( os.path.join(self.data_folder , "splitting_ratio.json") , "w") , indent=6)
+        return len(test_index),len(val_index),len(train_index)
     
     def splitted_fixed(self, label_list, fixed_train=10):
         data_size = len(self.data)
         index = [ i for i in range(data_size) ]
         random.shuffle(index)
         unique_labels = list(set( label_list ))
+        num_class = len(unique_labels)
         split_dict = {}
         for label in unique_labels:
             bool_index = [ i==label for i in label_list ]
@@ -156,7 +206,8 @@ class MutantRelevanceDataset(InMemoryDataset):
         val_size = int( len( remaining_index ) * 0.4 )
         val_index = remaining_index[ : val_size ]
         test_index = remaining_index[val_size:]
-        json.dump( {"test":test_index, "val": val_index, "train": train_index}, open( os.path.join(self.data_folder ,"splitting_fixed.json") , "w") )
+        json.dump( {"test":test_index, "val": val_index, "train": train_index}, open( os.path.join(self.data_folder ,f"splitting_fixed_{num_class}.json") , "w") , indent=6 )
+        return len(test_index),len(val_index),len(train_index)
 
     def process(self):        
         # mutanttyper=json.load( open( os.path.join(os.path.join(self.root, "mutant_type.json")) ) )    
@@ -166,7 +217,7 @@ class MutantRelevanceDataset(InMemoryDataset):
         mutant_file_name, _ = self.raw_file_names
         mfile = mutant_file_name
         mutant_data = torch.load(os.path.join( mfile ))
-        mutant_data_list, _ = mutant_data[0], mutant_data[1], mutant_data[2]
+        mutant_data_list, _ = mutant_data[0], mutant_data[1]
         mutant_data_list = [ inverse_eage(d) for d in mutant_data_list ]
        
         graph_dict = {  }
@@ -202,9 +253,16 @@ class MutantRelevanceDataset(InMemoryDataset):
                                                             torch.tensor(mutant_graph.label_r_binary), torch.tensor(mutant_graph.label_r_mul), torch.tensor(mutant_graph.mutant_type) ))
                     relevance_mutant_binary_labels.append( mutant_graph.label_r_binary )
                     relevance_mutant_multiple_labels.append( mutant_graph.label_r_mul )
-                     
+        #print(  os.path.dirname(self.processed_paths[0]) )
+        if not os.path.isdir( os.path.dirname(self.processed_paths[0]) ):
+           os.makedirs( os.path.dirname(self.processed_paths[0]), exist_ok=True )          
         torch.save(relevance_mutant_data, self.processed_paths[0])
         torch.save( [ relevance_mutant_binary_labels, relevance_mutant_multiple_labels ], self.processed_paths[1] )
+        bstat = collections.Counter(relevance_mutant_binary_labels)
+        mstat = collections.Counter(relevance_mutant_multiple_labels)
+        json.dump(bstat, open(self.processed_paths[2], "w") , indent=6)
+        json.dump(mstat, open(self.processed_paths[3], "w") , indent=6)
+
 
 def balanced_subsample(x,y,mid_list,subsample_size=1.0):
 

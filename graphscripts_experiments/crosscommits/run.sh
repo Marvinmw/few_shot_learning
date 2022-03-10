@@ -6,8 +6,7 @@ gp=$4
 device=$5
 num_class=$6
 loss=$7
-project=$8
-saved_model_file=$9
+test_project=$8
 dropratio=0.1
 cd ../../
 
@@ -16,7 +15,7 @@ sw=lstm
 jk=sum
 lstm_emb_dim=150
 mkdir -p $output
-python mutants_siamese_crosscommit.py --batch_size 256 --num_workers 5  --epochs 50 --num_layer 5 \
+python mutants_siamese.py --batch_size 256 --num_workers 5  --epochs 20 --num_layer 5 \
 --subword_embedding  $sw \
 --lstm_emb_dim $lstm_emb_dim \
 --graph_pooling $gp \
@@ -32,12 +31,13 @@ python mutants_siamese_crosscommit.py --batch_size 256 --num_workers 5  --epochs
 --num_class ${num_class} \
 --lr 0.001 \
 --dropratio $dropratio \
---warmup_schedule yes \
+--warmup_schedule no \
 --mutant_type no \
 --loss $loss \
---saved_model_file  $saved_model_file \
---fixed_size 50 \
---lazy yes \
---projects $project
+--saved_model_file -1 \
+--task relevance \
+--remove_projects $test_project \
+--lazy no \
+--projects collections csv io lang text 
 
 

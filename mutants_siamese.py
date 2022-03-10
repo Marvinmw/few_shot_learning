@@ -1,5 +1,7 @@
-from matplotlib import collections
-from utils.mutantsdataset_siamese import MutantsDataset, balanced_oversample
+import sys
+# setting path
+sys.path.append('../')
+from utils.mutantsdataset import MutantKilledDataset, MutantRelevanceDataset
 import argparse
 import json
 from torch_geometric.data import DataLoader
@@ -14,11 +16,10 @@ from utils.model import  GNN_encoder
 from utils.tools import performance, TokenIns
 from utils.pytorchtools import EarlyStopping
 from utils.AverageMeter import AverageMeter
-from utils.probing_classifier import PredictionLinearModelFineTune
-from utils.ContrastiveLoss import ContrastiveLoss 
+from utils.classifier import PredictionLinearModelFineTune
+from utils.ContrastiveLoss import ContrastiveLoss, SelfContrastiveLoss
 import collections
 import random
-import gc
 try:
     from transformers import get_linear_schedule_with_warmup as linear_schedule
 except:
@@ -27,11 +28,20 @@ except:
     def linear_schedule(optimizer, num_warmup_steps=100, num_training_steps=100):
         return get_linear_schedule_with_warmup(optimizer, warmup_steps=num_warmup_steps,
                                                     t_total=num_training_steps)
-                                                    
+def set_seed(args):
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)
+
+
 best_f1 = 0
 view_test_f1 = 0
 criterion = nn.CrossEntropyLoss()
 contrastive_loss = ContrastiveLoss()
+temprature = 0.3  # temprature for contrastive loss
+lam = 0.9  # lambda for loss
+self_contrastive_loss = SelfContrastiveLoss(temprature)
 
 def train(args, model, device, loader, optimizer, loader_val, loader_test, epoch, saved_model_path, earlystopping, scheduler, dataset_list):
     global best_f1
@@ -45,26 +55,37 @@ def train(args, model, device, loader, optimizer, loader_val, loader_test, epoch
         batch = batch.to(device)
         optimizer.zero_grad()      
         pred,  x_s, x_t = model(batch)    
-        # if args.num_class == 2:
-        #     batch.y[ batch.y != 0 ] = 1
-        #     #batch.y = 1 -  batch.y
-        # else:
-        #     batch.y[ batch.y == 4 ] = 1
+        if args.num_class == 2:
+            y = batch.by
+        else:
+            y = batch.my
         if args.loss == "both":
-            loss =  ( criterion( pred, batch.y) + contrastive_loss( x_s, x_t, 1 - batch.y)    )/2
+            loss =   ( criterion( pred, y)  + contrastive_loss(  x_s, x_t,  1-y) )/2
         elif args.loss == "CE":
-            loss =  criterion( pred, batch.y) 
+            loss =  criterion( pred, y) 
         elif args.loss == "CT":
-            loss = contrastive_loss( x_s, x_t, 1 - batch.y)
+            loss = contrastive_loss( x_s, x_t, 1 - y)
         else:
             assert False
+        if args.loss == "both":
+            loss =  lam * criterion( pred, y) + contrastive_loss( x_s, x_t, 1 - y)  * (1 - lam)
+        elif args.loss == "CE":
+            loss =  criterion( pred, y) 
+        elif args.loss == "CL":
+            loss = contrastive_loss( x_s, x_t, 1 - y)
+        elif args.loss == "SCL":
+            cross_loss =  criterion( pred, y) 
+            contrastive_l = self_contrastive_loss( torch.cat( (x_s, x_t),  dim=1) ) 
+            loss = (lam * contrastive_l) + (1 - lam) * (cross_loss)
+        else:
+            assert False, f"Wrong loss name {args.loss}"
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
         optimizer.step()
         if args.warmup_schedule:
             scheduler.step()  
         trainloss.update(loss.item())
-        y_true.extend( batch.y.detach().cpu())
+        y_true.extend( y.detach().cpu())
         _, predicted_labels = torch.max( pred, dim=1 )
         y_pred.extend(predicted_labels.detach().cpu())
         if step%args.save_steps == 0 :
@@ -95,13 +116,13 @@ def train(args, model, device, loader, optimizer, loader_val, loader_test, epoch
             if f1_val > best_f1 :
                 best_f1 = f1_val
                 view_test_f1 = avg_test_f1
-                if earlystopping.save_model:
-                    torch.save(model.state_dict(), os.path.join(saved_model_path,  f"best_epoch{epoch}_.pth"))
+                # if earlystopping.save_model:
+                #     torch.save(model.state_dict(), os.path.join(saved_model_path,  f"best_epoch{epoch}_.pth"))
             res.append([accuracy_val, precision_val, recall_val, f1_val])
     model.eval()
     print("Evaluation ")
     epcoh_res = []
-    accuracy_train, precision_train, recall_train, f1_train, = performance(y_true, y_pred, average="macro")
+    accuracy_train, precision_train, recall_train, f1_train, = performance(y_true, y_pred, average="binary")
     print(f"\nEpoch {epoch}, Train,  Loss {trainloss.avg}, Accuracy {accuracy_train}, Precision {precision_train}, Recall {recall_train}, F1 {f1_train}"  )
     epcoh_res.extend( [accuracy_train, precision_train, recall_train, f1_train ] )
     evalloss, accuracy_val, precision_val, recall_val, f1_val,_ = eval(args, model, device, loader_val)
@@ -117,21 +138,32 @@ def eval(args, model, device, loader):
         batch = batch.to(device)
         with torch.no_grad():
             outputs,x_s, x_t = model(batch)
-            # if args.num_class == 2:
-            #     batch.y[ batch.y!= 0 ] = 1
-            # else:
-            #     batch.y[ batch.y == 4 ] = 1
-            #loss = criterion( outputs, batch.y)
+            if args.num_class == 2:
+                y = batch.by
+            else:
+                y = batch.my
             if args.loss == "both":
-                loss =  ( criterion( outputs, batch.y) + contrastive_loss( x_s, x_t, 1 - batch.y)    )/2
+                loss =   ( criterion( outputs, y)  + contrastive_loss(  x_s, x_t,  1-y) )/2
             elif args.loss == "CE":
-                loss =  criterion( outputs, batch.y) 
+                loss =  criterion( outputs, y) 
             elif args.loss == "CT":
-                loss = contrastive_loss( x_s, x_t, 1 - batch.y)
+                loss = contrastive_loss( x_s, x_t, 1 - y)
             else:
                 assert False
+            if args.loss == "both":
+                loss =  lam * criterion( outputs, y) + contrastive_loss( x_s, x_t, 1 - y)  * (1 - lam)
+            elif args.loss == "CE":
+                loss =  criterion( outputs, y) 
+            elif args.loss == "CL":
+                loss = contrastive_loss( x_s, x_t, 1 - y)
+            elif args.loss == "SCL":
+                cross_loss =  criterion( outputs, y) 
+                contrastive_l = self_contrastive_loss( torch.cat( (x_s, x_t),  dim=1) ) 
+                loss = (lam * contrastive_l) + (1 - lam) * (cross_loss)
+            else:
+                assert False, f"Wrong loss name {args.loss}"
             evalloss.update( loss.item() )         
-        y_true.append(batch.y.cpu())
+        y_true.append(y.cpu())
         _, predicted_label = torch.max( outputs, dim=1 )
         y_prediction.append(predicted_label.cpu())
       
@@ -149,8 +181,10 @@ import glob
 def fecth_datalist(args, projects):
     dataset_list = {}
     for p in projects:
-        #set up dataset dataset_path
-        dataset_inmemory = MutantsDataset( args.dataset_path , dataname=args.dataset, project=p)
+        if args.task == "killed":
+            dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
+        else:
+            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
         dataset_list[p] = dataset_inmemory
     return dataset_list
 
@@ -161,31 +195,19 @@ def create_dataset(args, train_projects, dataset_list):
     data = []
     for tp in train_projects:
             dataset_inmemory = dataset_list[tp] 
-            split_dict = dataset_inmemory.split(reshuffle=False) 
             dataset = dataset_inmemory.data
-            if args.task == "killable":
-                dataset_inmemory.keep_label(zeros_label=[0])
-            elif args.task == "fail":
-                dataset_inmemory.keep_label(zeros_label=[0,2,3])
-            elif args.task == "exc":
-                dataset_inmemory.keep_label(zeros_label=[0,1,3,4])
-            elif args.task == "time":
-                dataset_inmemory.keep_label(zeros_label=[0,1,2,4])
-            else:
-                assert False, f"Wrong task, {args.task}"
-
             data.extend( dataset )
     random.shuffle(data)
-    fixed_size=args.fixed_size
-    train_dataset = data[:fixed_size]
-    val_size =  int( (len(data)- fixed_size)*0.2 )
-    valid_dataset = data[fixed_size : fixed_size+ val_size]
-    test_size = len(data) - val_size - fixed_size
-    test_dataset=data[ fixed_size+ val_size: ]
+    test_size = int(len(data)*0.2)
+    val_size = int((len(data)-test_size)*0.2)
+    train_size = len(data) - test_size -val_size
+    train_dataset = data[:train_size]
+    valid_dataset = data[train_size : train_size+ val_size]
+    test_dataset=data[  train_size+ val_size: ]
             
     y = [ d.y.item() for d in train_dataset ]
     train_stat = collections.Counter(y)
-    train_dataset = balanced_oversample(train_dataset, y)
+    #train_dataset = balanced_oversample(train_dataset, y)
     loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
     val_y = [ d.y.item() for d in valid_dataset ]
     val_stat = collections.Counter( val_y )
@@ -199,8 +221,6 @@ def create_dataset(args, train_projects, dataset_list):
     return loader, loader_val, loader_test, train_projects, {"train":train_stat, "val":val_stat, "test":test_stat}
 
 def fetch_dataset(args, dataset_inmemory):
-    #dataset_inmemory = MutantsDataset( args.dataset_path , dataname=args.dataset, project=name)
-    #split_dict = dataset_inmemory.split(reshuffle=False) 
     dataset = dataset_inmemory.data
     loader_test = DataLoader( dataset, batch_size=int(args.batch_size/2), shuffle=False, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
     return loader_test
@@ -210,12 +230,12 @@ def projects_dict(args):
     name=[]
     if len(args.projects) > 1:
         for p in args.projects:
-            for pf in glob.glob(f"{args.dataset_path}/{p}_*_fixed"):
+            for pf in glob.glob(f"{args.dataset_path}/{p}*"):
                 projects[p].append(os.path.basename(pf))
                 name.append( os.path.basename(pf) )
     elif len(args.projects) == 1:
         for p in args.projects:
-            for pf in glob.glob(f"{args.dataset_path}/{p}_*_fixed"):
+            for pf in glob.glob(f"{args.dataset_path}/{p}*"):
                 n=os.path.basename(pf)
                 projects[n].append(os.path.basename(pf))
                 name.append( os.path.basename(pf) )
@@ -225,11 +245,7 @@ def projects_dict(args):
 
 def train_mode(args):
     os.makedirs( args.saved_model_path, exist_ok=True)
-    if args.graph_pooling == "set2set":
-        args.graph_pooling = [2, args.graph_pooling]
-
-    torch.manual_seed(0)
-    np.random.seed(0)
+    set_seed(0)
     device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(0)
@@ -277,7 +293,7 @@ def train_mode(args):
   
     pytorch_total_params = sum(p.numel() for p in encoder.parameters() if p.requires_grad)
     print(f"\nTotal Number of Parameters of Model, {pytorch_total_params}")
-    model = PredictionLinearModelFineTune(600, num_class,encoder,False if args.mutant_type == "no" else True,args.dropratio)
+    model = PredictionLinearModelFineTune(600, num_class, encoder, args.dropratio)
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Trainable Parameters Model {pytorch_total_params}\n")
     if not args.saved_model_file == "-1":
@@ -366,16 +382,25 @@ def main():
                         help='learning rate (default: 0.001)')
     parser.add_argument('--warmup_schedule', type=str, default="no",
                         help='warmup')
-    parser.add_argument('--mutant_type', type=str, default="no",
-                        help='mutantype')
+    parser.add_argument('--task', type=str, default="killed",
+                        help='[killed, relevance]')
     parser.add_argument('--lazy', type=str, default="no",
                         help='save model')
-    parser.add_argument("--projects", nargs="+", default=["Mockito"])
-    parser.add_argument("--loss", type=str, default="CE", help='[both, CT, CE]')
+    parser.add_argument("--projects", nargs="+", default=["collections"])
+    parser.add_argument("--remove_projects", nargs="+", default=[])
+    parser.add_argument("--loss", type=str, default="CE", help='[both, CT, CE, SCL]')
 
     args = parser.parse_args( )
     with open(args.saved_model_path+'/commandline_args.txt', 'w') as f:
         json.dump(args.__dict__, f, indent=2)
+
+    if len(args.remove_projects) != 0:
+        usedp=[]
+        for p in args.projects:
+            if p not in args.remove_projects:
+                usedp.append( p  )
+        args.projects = usedp
+
     train_mode(args)
 
     

@@ -1,6 +1,6 @@
 from matplotlib import collections
 #from utils.mutantsdataset_siamese import MutantsDataset
-from utils.mutantsdataset_relevance import MutantRelevanceDataset, balanced_oversample
+from utils.mutantsdataset import MutantRelevanceDataset, balanced_oversample
 import argparse
 import json
 from torch_geometric.data import DataLoader
@@ -15,11 +15,10 @@ from utils.model import  GNN_encoder
 from utils.tools import performance, TokenIns
 from utils.pytorchtools import EarlyStopping
 from utils.AverageMeter import AverageMeter
-from utils.probing_classifier import PredictionLinearModelFineTune
+from utils.classifier import PredictionLinearModelFineTune
 from utils.ContrastiveLoss import ContrastiveLoss 
 import collections
 import random
-import gc
 try:
     from transformers import get_linear_schedule_with_warmup as linear_schedule
 except:
@@ -52,13 +51,16 @@ def train(args, model, device, loader, optimizer, loader_val, loader_test, epoch
         batch = batch.to(device)
         optimizer.zero_grad()      
         pred,  x_s, x_t = model(batch)    
-       
+        if args.num_class == 2:
+            y = batch.by
+        else:
+            y = batch.my
         if args.loss == "both":
-            loss =   ( criterion( pred, batch.y)  + contrastive_loss(  x_s, x_t,  1-batch.y) )/2
+            loss =   ( criterion( pred, batch.y)  + contrastive_loss(  x_s, x_t,  1-y) )/2
         elif args.loss == "CE":
             loss =  criterion( pred, batch.y) 
         elif args.loss == "CT":
-            loss = contrastive_loss( x_s, x_t, 1 - batch.y)
+            loss = contrastive_loss( x_s, x_t, 1 - y)
         else:
             assert False
         loss.backward()
@@ -348,8 +350,6 @@ def main():
                         help='learning rate (default: 0.001)')
     parser.add_argument('--warmup_schedule', type=str, default="no",
                         help='warmup')
-    parser.add_argument('--mutant_type', type=str, default="no",
-                        help='mutantype')
     parser.add_argument('--lazy', type=str, default="no",
                         help='save model')
     parser.add_argument("--projects", nargs="+", default=["Mockito"])

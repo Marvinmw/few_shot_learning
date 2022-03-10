@@ -1,6 +1,6 @@
 from matplotlib import collections
 #from utils.mutantsdataset_siamese import MutantsDataset
-from utils.mutantsdataset_relevance import MutantsDatasetSingleData, balanced_oversample
+from utils.mutantsdataset import MutantsDatasetSingleData, balanced_oversample
 import argparse
 import json
 from torch_geometric.data import DataLoader
