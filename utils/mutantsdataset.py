@@ -131,11 +131,11 @@ class MutantKilledDataset(InMemoryDataset):
 
   
 class MutantRelevanceDataset(InMemoryDataset):
-    def __init__(self, root, dataname, project="", transform=None, pre_transform=None, pre_filter=None):
+    def __init__(self, root, dataname, project="",probability=0.6, transform=None, pre_transform=None, pre_filter=None):
         self.root = root
         self.dataname = dataname
         self.project = project
-        self.probability = 0.6
+        self.probability = probability
         super(MutantRelevanceDataset, self).__init__(root=root, transform=transform,  pre_transform=pre_transform, pre_filter=pre_filter)
         self.data = torch.load(self.processed_paths[0])
         self.data_folder = os.path.dirname( self.processed_paths[0] )
@@ -164,8 +164,9 @@ class MutantRelevanceDataset(InMemoryDataset):
     
     @property
     def processed_file_names(self):
-        return [ f'relevance/relevance_processed_{self.dataname}_{self.project}.pt', f"relevance/relevance_info_{self.dataname}_{self.project}.pt", 
-                f"relevance/bstat_{self.dataname}_{self.project}.json", f"relevance/mstat_{self.dataname}_{self.project}.json"]
+        suffix=f"{self.dataname}_{self.project}_{self.probability}"
+        return [ f'relevance/relevance_processed_{suffix}.pt', f"relevance/relevance_info_{suffix}.pt", 
+                f"relevance/bstat_{suffix}.json", f"relevance/mstat_{suffix}.json"]
     
     def download(self):
         pass
@@ -179,7 +180,7 @@ class MutantRelevanceDataset(InMemoryDataset):
         test_index = index[ : test_size ]
         val_index = index[ test_size : test_size+val_size]
         train_index = index[ test_size+val_size :  ]
-        json.dump( {"test":test_index, "val": val_index, "train": train_index}, open( os.path.join(self.data_folder , "splitting_ratio.json") , "w") , indent=6)
+        json.dump( {"test":test_index, "val": val_index, "train": train_index}, open( os.path.join(self.data_folder , f"{self.probability}_splitting_ratio.json") , "w") , indent=6)
         return len(test_index),len(val_index),len(train_index)
     
     def splitted_fixed(self, label_list, fixed_train=10):
@@ -208,7 +209,7 @@ class MutantRelevanceDataset(InMemoryDataset):
         val_size = int( len( remaining_index ) * 0.4 )
         val_index = remaining_index[ : val_size ]
         test_index = remaining_index[val_size:]
-        json.dump( {"test":test_index, "val": val_index, "train": train_index}, open( os.path.join(self.data_folder ,f"splitting_fixed_{num_class}.json") , "w") , indent=6 )
+        json.dump( {"test":test_index, "val": val_index, "train": train_index}, open( os.path.join(self.data_folder ,f"{self.probability}_splitting_fixed_{num_class}.json") , "w") , indent=6 )
         return len(test_index),len(val_index),len(train_index)
 
     def process(self):        
@@ -254,9 +255,12 @@ class MutantRelevanceDataset(InMemoryDataset):
                        neg_graph_list.append( on_change_graph[cid] ) 
 
                 #candiates_list = neg_graph_list
+                random.shuffle(neg_graph_list)
+                first=True
                 for c_graph in neg_graph_list:
-                    r = np.random.uniform(0,1, size=1)
-                    if r[0] > self.probability:
+                    r = np.random.uniform(0, 1, size=1)
+                    if first or r[0] > self.probability:
+                        first = False
                         relevance_mutant_data.append(PairData(mutant_graph.edge_index,  mutant_graph.x, mutant_graph.edge_attr,mutant_graph.ins_length, 
                                                                 c_graph.edge_index,  c_graph.x, c_graph.edge_attr, c_graph.ins_length, 
                                                                 torch.tensor(mutant_graph.label_r_binary), torch.tensor(mutant_graph.label_r_mul), torch.tensor(mutant_graph.mutant_type) ))

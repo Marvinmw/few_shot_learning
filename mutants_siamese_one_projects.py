@@ -216,7 +216,7 @@ def fecth_datalist(args, projects):
         if args.task == "killed":
             dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
         elif args.task == "relevance":
-            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0.8 )
+            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
         else:
             assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
         dataset_list[p] = dataset_inmemory
@@ -278,6 +278,14 @@ def projects_dict(args):
     return projects, name
 
 
+def train_one_test_many(args):
+    os.makedirs( args.saved_model_path, exist_ok=True)
+    set_seed(args)
+    device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(0)
+    _, namelist = projects_dict(args)
+    
 
 def train_mode(args):
     os.makedirs( args.saved_model_path, exist_ok=True)
@@ -287,12 +295,9 @@ def train_mode(args):
         torch.cuda.manual_seed_all(0)
 
     
-    projects, namelist = projects_dict(args)
+    _, namelist = projects_dict(args)
     
-    train_projects = []
-    klist = list( projects.keys() )
-    for pp in klist:
-                train_projects.extend(projects[pp])
+    
     orgsavedpat=args.saved_model_path
 
     dataset_list = fecth_datalist(args, namelist)
@@ -303,7 +308,7 @@ def train_mode(args):
     logger.info(args.saved_model_path)
     
 
-    loader, loader_val,  loader_test, train_projects, stat = create_dataset(args, train_projects, dataset_list)
+    loader, loader_val,  loader_test, train_projects, stat = create_dataset(args, namelist, dataset_list)
     json.dump(train_projects, open(os.path.join(args.saved_model_path, "train_projects.json"), "w")  )
     #json.dump(remaining_projects, open(os.path.join(args.saved_model_path, "remaining_projects.json"), "w")  )
     json.dump(stat, open(os.path.join(args.saved_model_path, "stat.json"), "w")  , indent=6)
@@ -418,20 +423,14 @@ if __name__ == "__main__":
     parser.add_argument('--lazy', type=str, default="no",
                         help='save model')
     parser.add_argument("--projects", nargs="+", default=["collections"])
-    parser.add_argument("--remove_projects", nargs="+", default=[])
     parser.add_argument("--loss", type=str, default="CE", help='[both, CT, CE, SCL]')
 
     args = parser.parse_args( )
     with open(args.saved_model_path+'/commandline_args.txt', 'w') as f:
         json.dump(args.__dict__, f, indent=2)
 
-    if len(args.remove_projects) != 0:
-        usedp=[]
-        for p in args.projects:
-            if p not in args.remove_projects:
-                usedp.append( p  )
-        args.projects = usedp
-    assert len(args.projects) == 4
+   
+    assert len(args.projects) == 1
     logger = get_logger(os.path.join(args.saved_model_path, "log.txt"))
     logger.info('start training!')
     train_mode(args)
