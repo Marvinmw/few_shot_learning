@@ -186,7 +186,7 @@ def test_eval(args, model, device, loader_test):
             distill_predicted_label.append(1)
         else:
             distill_predicted_label.append(0)
-    
+    logger.info(f"Distill data {len(mid_list)} -> Mutants { len(mutants)}")
     distill_accuracy, distill_precision, distill_recall, distill_f1 = performance( ground_label,distill_predicted_label, average="binary")
     distill_accuracy_macro, distill_precision_macro, distill_recall_macro, distill_f1_macro = performance( ground_label, distill_predicted_label, average="macro")
     distill_accuracy_weighted, distill_precision_weighted, distill_recall_weighted, distill_f1_weighted = performance( ground_label, distill_predicted_label, average="weighted")
