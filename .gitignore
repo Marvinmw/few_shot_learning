@@ -17,4 +17,7 @@ preprocess/relevance_java_dot/
 preprocess/debug_info_mutant.json
 preprocess/debug_info.json
 tmp/
+relevance_fixed_b.txt
+relevance_fixed_m.txt
+relevance_sr.txt
 
