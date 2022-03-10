@@ -60,7 +60,7 @@ def train(args, model, device, loader, optimizer, scheduler):
             y = batch.my
        
         if args.loss == "both":
-            loss =  lam * criterion( pred, y) + contrastive_loss( x_s, x_t, 1 - y)  * (1 - lam)
+            loss =  0.5 * criterion( pred, y) + contrastive_loss( x_s, x_t, 1 - y)  * (1 - 0.5)
         elif args.loss == "CE":
             loss =  criterion( pred, y) 
         elif args.loss == "CL":
@@ -213,7 +213,7 @@ def eval(args, model, device, loader):
                 y = batch.my
 
             if args.loss == "both":
-                loss =  lam * criterion( outputs, y) + contrastive_loss( x_s, x_t, 1 - y)  * (1 - lam)
+                loss =  0.5 * criterion( outputs, y) + contrastive_loss( x_s, x_t, 1 - y)  * (1 - 0.5)
             elif args.loss == "CE":
                 loss =  criterion( outputs, y) 
             elif args.loss == "CL":
