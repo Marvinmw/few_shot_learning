@@ -283,7 +283,7 @@ def projects_dict(args):
                 name.append( os.path.basename(pf) )
     return projects, name
 
-
+import gc
 def train_one_test_many(args):
     set_seed(args)
     device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
@@ -300,7 +300,8 @@ def train_one_test_many(args):
                 test_on_projects.append( namelist[j] )
         args.saved_model_path = f"{orginalsavepath}/{train_on_projects[0]}_fold/"
         train_mode(args, train_on_projects, test_on_projects, dataset_list)
-        
+        gc.collect()
+        torch.cuda.empty_cache()  
     
     
 
