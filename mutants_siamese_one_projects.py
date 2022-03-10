@@ -322,7 +322,10 @@ def train_one_test_many(args):
             if j != k:
                 test_on_projects.append( namelist[j] )
         args.saved_model_path = f"{orginalsavepath}/{train_on_projects[0]}_fold/"
-        train_mode(args, train_on_projects, test_on_projects, dataset_list)
+        try:
+            train_mode(args, train_on_projects, test_on_projects, dataset_list)
+        except Exception as e:
+            logger.info(e)
         gc.collect()
         torch.cuda.empty_cache()  
     
@@ -403,9 +406,15 @@ def train_mode(args, train_project, test_projects, dataset_list):
         logger.info(f"Test Project {tp}")
         dataset_inmemory = dataset_list[tp] 
         test_dataset = dataset_inmemory.data
+        if len(test_dataset) == 0:
+            continue
         loader_test = DataLoader( test_dataset, batch_size=min(int(args.batch_size/2), len(test_dataset)), shuffle=False, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
-        testloss, accuracy_test, precision_test, recall_test, f1_test, result_test, distill_result = test_eval(args, model, device, loader_test)
-        test_res[tp] = [ testloss, accuracy_test, precision_test, recall_test, f1_test, result_test, distill_result ]
+        try:
+            testloss, accuracy_test, precision_test, recall_test, f1_test, result_test, distill_result = test_eval(args, model, device, loader_test)
+            test_res[tp] = [ testloss, accuracy_test, precision_test, recall_test, f1_test, result_test, distill_result ]
+        except Exception as e:
+            logger.info(e)
+            test_res[tp] = []
     json.dump( test_res, open(os.path.join(args.saved_model_path, "test.json"), "w"), indent=6  )
 
 

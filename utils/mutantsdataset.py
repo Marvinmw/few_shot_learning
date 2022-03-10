@@ -393,7 +393,128 @@ class PairData(Data):
 
 
       
+    import os.path as osp
+
+import torch
+from torch_geometric.data import Dataset, download_url
+
+
+class MyOwnDataset(Dataset):
+    def __init__(self, root, dataname, project, transform=None, pre_transform=None, pre_filter=None):
+        self.root = root
+        self.dataname = dataname
+        self.project = project
+        self.probability = 0.0
+        super().__init__(root, transform, pre_transform, pre_filter)
+        self.data = torch.load(self.processed_paths[0])
+        self.data_folder = os.path.dirname( self.processed_paths[0] )
+        [ self.relevance_mutant_binary_labels, self.relevance_mutant_multiple_labels ] =  torch.load(self.processed_paths[1])
+        
+        
+    @property
+    def raw_dir(self):
+        return os.path.join(self.root)
+        
+    @property
+    def raw_paths(self):
+        r"""The filepaths to find in order to skip the download."""  
+        return self.raw_file_names[0] + self.raw_file_names[1]
+
+    @property
+    def raw_file_names(self):
+        mutant_file_name =  os.path.join( self.root , "raw", "mutants", "graph", f"{self.dataname}.pt")   
+        original_file_name =  os.path.join( self.root , "raw", "original", "graph", f"{self.dataname}.pt")   
+        return mutant_file_name, original_file_name
     
+    @property
+    def processed_file_names(self):
+        suffix=f"{self.dataname}_{self.project}_{self.probability}"
+        return [ f'relevance/relevance_processed_{suffix}.pt', f"relevance/relevance_info_{suffix}.pt", 
+                f"relevance/bstat_{suffix}.json", f"relevance/mstat_{suffix}.json"]
+    
+    def download(self):
+        pass
+
+    def process(self):        
+        # mutanttyper=json.load( open( os.path.join(os.path.join(self.root, "mutant_type.json")) ) )    
+        relevance_mutant_binary_labels = []
+        relevance_mutant_multiple_labels = []
+        relevance_mutant_data = []
+        mutant_file_name, _ = self.raw_file_names
+        mfile = mutant_file_name
+        mutant_data = torch.load(os.path.join( mfile ))
+        mutant_data_list, _ = mutant_data[0], mutant_data[1]
+        mutant_data_list = [ inverse_eage(d) for d in mutant_data_list ]
+       
+        graph_dict = {  }
+        on_change_graph = { } 
+        change_mid_list = []
+        for g in mutant_data_list:
+            if g.on_change:
+                on_change_graph[ g.mutantID ] = g
+                change_mid_list.append( g.mutantID )
+            else:
+                graph_dict[ g.mutantID  ] = g
+        
+
+        for mid in graph_dict:
+                mutant_graph = graph_dict[mid]
+                relevance_label = mutant_graph.label_r_binary
+                if relevance_label == -1: # not considered
+                    continue
+                interacted_mid = mutant_graph.interaction_mid
+                pos_graph = None
+                
+                if interacted_mid != -1:
+                    pos_graph = on_change_graph[ interacted_mid ] 
+                    relevance_mutant_data.append(PairData(mutant_graph.edge_index,  mutant_graph.x, mutant_graph.edge_attr,mutant_graph.ins_length, 
+                                                            pos_graph.edge_index,  pos_graph.x, pos_graph.edge_attr, pos_graph.ins_length, 
+                                                            torch.tensor(mutant_graph.label_r_binary), torch.tensor(mutant_graph.label_r_mul), torch.tensor(mutant_graph.mutant_type), torch.tensor(mid) ))
+                    relevance_mutant_binary_labels.append( mutant_graph.label_r_binary )
+                    relevance_mutant_multiple_labels.append( mutant_graph.label_r_mul )
+                remaining_graph_list = []
+                for cid in on_change_graph:
+                    if cid != interacted_mid:
+                       remaining_graph_list.append( on_change_graph[cid] ) 
+
+                #candiates_list = neg_graph_list
+                random.shuffle(remaining_graph_list)
+                first=True
+                for c_graph in remaining_graph_list:
+                    r = np.random.uniform(0, 1, size=1)
+                    if first or r[0] > self.probability:
+                        first = False
+                        
+                        relevance_mutant_binary_labels.append( mutant_graph.label_r_binary )
+                        # ml = None
+                        # if mutant_graph.label_r_mul % 2 == 1:
+                        #     ml = mutant_graph.label_r_mul - 1
+                        #     relevance_mutant_multiple_labels.append( mutant_graph.label_r_mul - 1 )
+                        # else:
+                        #     ml = mutant_graph.label_r_mul 
+                        relevance_mutant_multiple_labels.append( mutant_graph.label_r_mul  )
+
+                        relevance_mutant_data.append(PairData(mutant_graph.edge_index,  mutant_graph.x, mutant_graph.edge_attr,mutant_graph.ins_length, 
+                                                                c_graph.edge_index,  c_graph.x, c_graph.edge_attr, c_graph.ins_length, 
+                                                                torch.tensor( mutant_graph.label_r_binary ), torch.tensor(mutant_graph.label_r_mul), torch.tensor(mutant_graph.mutant_type), torch.tensor(mid) ))
+        print(  os.path.dirname(self.processed_paths[0]) )
+        if not os.path.isdir( os.path.dirname(self.processed_paths[0]) ):
+           os.makedirs( os.path.dirname(self.processed_paths[0]), exist_ok=True )          
+        torch.save(relevance_mutant_data, self.processed_paths[0])
+        torch.save( [ relevance_mutant_binary_labels, relevance_mutant_multiple_labels ], self.processed_paths[1] )
+        bstat = collections.Counter(relevance_mutant_binary_labels)
+        mstat = collections.Counter(relevance_mutant_multiple_labels)
+        json.dump(bstat, open(self.processed_paths[2], "w") , indent=6)
+        json.dump(mstat, open(self.processed_paths[3], "w") , indent=6)
+        
+    def len(self):
+        return len(self.processed_file_names)
+
+    def get(self, idx):
+        data = self.data[idx]
+        d1 = data
+        d2 = data
+        return d1, d2
 
 
 
