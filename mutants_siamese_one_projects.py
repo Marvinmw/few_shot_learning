@@ -67,7 +67,7 @@ def train(args, model, device, loader, optimizer, scheduler):
             loss = contrastive_loss( x_s, x_t, 1 - y)
         elif args.loss == "SCL":
             cross_loss =  criterion( pred, y) 
-            contrastive_l = self_contrastive_loss( torch.cat( (x_s, x_t),  dim=1) ) 
+            contrastive_l = self_contrastive_loss( torch.cat( (x_s, x_t),  dim=1).cpu().detach().numpy(), y.cpu().detach().numpy() ) 
             loss = (lam * contrastive_l) + (1 - lam) * (cross_loss)
         else:
             assert False, f"Wrong loss name {args.loss}"
@@ -133,14 +133,14 @@ def evalutaion(args, model, device, loader_val, epoch, earlystopping ):
     earlystopping(f1_val, model, performance={"val_f1":f1_val, "epoch":epoch,
                                             "val":[evalloss, accuracy_val, precision_val, recall_val, f1_val, result]})
       
-    logger.info(f"Best Test {view_test_f1}")
+    #logger.info(f"Best Test {view_test_f1}")
     logger.info(f"Epoch {epoch}, Valid, Eval Loss {evalloss}, Accuracy {accuracy_val}, Precision {precision_val}, Recall {recall_val}, F1 {f1_val}"  )
     if f1_val > best_f1 :
             best_f1 = f1_val
     return evalloss, accuracy_val, precision_val, recall_val, f1_val, result
 
-def test_eval(args, device, loader_test):
-    #set up model
+def build_model(args, device):
+     #set up model
     tokenizer_word2vec = TokenIns( 
             word2vec_file=os.path.join(args.sub_token_path, args.emb_file),
             tokenizer_file=os.path.join(args.sub_token_path, "fun.model")
@@ -165,6 +165,11 @@ def test_eval(args, device, loader_test):
     logger.info(f"Trainable Parameters Model {pytorch_total_params}\n")
     model.load_state_dict( torch.load(os.path.join(args.saved_model_path, "saved_model.pt"), map_location="cpu") )
     model.to(device)
+    return model
+
+def test_eval(args, model, device, loader_test):
+   
+    model.eval()
     testloss, accuracy_test, precision_test, recall_test, f1_test, result_test = eval(args, model, device, loader_test)
     logger.info(f" Test, Eval Loss {testloss}, Accuracy {accuracy_test}, Precision {precision_test}, Recall {recall_test}, F1 {f1_test}"  )
     return testloss, accuracy_test, precision_test, recall_test, f1_test, result_test
@@ -190,7 +195,7 @@ def eval(args, model, device, loader):
                 loss = contrastive_loss( x_s, x_t, 1 - y)
             elif args.loss == "SCL":
                 cross_loss =  criterion( outputs, y) 
-                contrastive_l = self_contrastive_loss( torch.cat( (x_s, x_t),  dim=1) ) 
+                contrastive_l = self_contrastive_loss( torch.cat( (x_s, x_t),  dim=1).cpu().detach().numpy(), y.cpu().detach().numpy() ) 
                 loss = (lam * contrastive_l) + (1 - lam) * (cross_loss)
             else:
                 assert False, f"Wrong loss name {args.loss}"
@@ -216,7 +221,7 @@ def fecth_datalist(args, projects):
         if args.task == "killed":
             dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
         elif args.task == "relevance":
-            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
+            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0 )
         else:
             assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
         dataset_list[p] = dataset_inmemory
@@ -225,7 +230,7 @@ def fecth_datalist(args, projects):
 def create_dataset(args, train_projects, dataset_list):
     train_dataset = [ ]
     valid_dataset = [ ]
-    test_dataset = []
+   
     data = []
     for tp in train_projects:
             dataset_inmemory = dataset_list[tp] 
@@ -234,13 +239,11 @@ def create_dataset(args, train_projects, dataset_list):
     #data=data[:2000] # for local debug
     #args.batch_size=64 # for local debug
     random.shuffle(data)
-    test_size = int(len(data)*0.2)
-    val_size = int((len(data)-test_size)*0.2)
-    train_size = len(data) - test_size -val_size
+    val_size = int(len(data)*0.2)
+    train_size = len(data) -val_size
     train_dataset = data[:train_size]
-    valid_dataset = data[train_size : train_size+ val_size]
-    test_dataset=data[  train_size+ val_size: ]
-            
+    valid_dataset = data[train_size : ]
+   
     y = [ d.by.item() for d in train_dataset ]
     train_stat = collections.Counter(y)
     #train_dataset = balanced_oversample(train_dataset, y)
@@ -248,13 +251,13 @@ def create_dataset(args, train_projects, dataset_list):
     val_y = [ d.by.item() for d in valid_dataset ]
     val_stat = collections.Counter( val_y )
     print(len(valid_dataset))
-    print(len(test_dataset))
+    #print(len(test_dataset))
     loader_val = DataLoader( valid_dataset, batch_size=min(int(args.batch_size/2), len(valid_dataset)), shuffle=False, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
-    loader_test = DataLoader( test_dataset, batch_size=min(int(args.batch_size/2),len(test_dataset)), shuffle=False, num_workers = args.num_workers,follow_batch=['x_s', 'x_t']  )
-    test_y = [ d.by.item() for d in test_dataset ]
-    test_stat = collections.Counter( test_y )
+    # loader_test = DataLoader( test_dataset, batch_size=min(int(args.batch_size/2),len(test_dataset)), shuffle=False, num_workers = args.num_workers,follow_batch=['x_s', 'x_t']  )
+    # test_y = [ d.by.item() for d in test_dataset ]
+    # test_stat = collections.Counter( test_y )
 
-    return loader, loader_val, loader_test, train_projects, {"train":train_stat, "val":val_stat, "test":test_stat}
+    return loader, loader_val, train_projects, {"train":train_stat, "val":val_stat }
 
 def fetch_dataset(args, dataset_inmemory):
     dataset = dataset_inmemory.data
@@ -271,44 +274,49 @@ def projects_dict(args):
                 name.append( os.path.basename(pf) )
     elif len(args.projects) == 1:
         for p in args.projects:
+            print(p)
             for pf in glob.glob(f"{args.dataset_path}/{p}*"):
+               # print(pf)
                 n=os.path.basename(pf)
+                #print(n)
                 projects[n].append(os.path.basename(pf))
                 name.append( os.path.basename(pf) )
     return projects, name
 
 
 def train_one_test_many(args):
-    os.makedirs( args.saved_model_path, exist_ok=True)
     set_seed(args)
     device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(0)
     _, namelist = projects_dict(args)
-    
-
-def train_mode(args):
-    os.makedirs( args.saved_model_path, exist_ok=True)
-    set_seed(args)
-    device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(0)
-
-    
-    _, namelist = projects_dict(args)
-    
-    
-    orgsavedpat=args.saved_model_path
-
     dataset_list = fecth_datalist(args, namelist)
+    orginalsavepath = args.saved_model_path
+    for k in range(len(namelist)):
+        train_on_projects = [ namelist[k] ]
+        test_on_projects = [  ]
+        for j in range(len(namelist)):
+            if j != k:
+                test_on_projects.append( namelist[j] )
+        args.saved_model_path = f"{orginalsavepath}/{train_on_projects[0]}_fold/"
+        train_mode(args, train_on_projects, test_on_projects, dataset_list)
+        
+    
+    
 
-    args.saved_model_path = f"{orgsavedpat}"
+def train_mode(args, train_project, test_projects, dataset_list):
+    os.makedirs( args.saved_model_path, exist_ok=True)
+    set_seed(args)
+    device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(0)
+
     if not os.path.isdir(args.saved_model_path):
             os.makedirs(args.saved_model_path)
     logger.info(args.saved_model_path)
     
 
-    loader, loader_val,  loader_test, train_projects, stat = create_dataset(args, namelist, dataset_list)
+    loader, loader_val, train_projects, stat = create_dataset(args, train_project, dataset_list)
     json.dump(train_projects, open(os.path.join(args.saved_model_path, "train_projects.json"), "w")  )
     #json.dump(remaining_projects, open(os.path.join(args.saved_model_path, "remaining_projects.json"), "w")  )
     json.dump(stat, open(os.path.join(args.saved_model_path, "stat.json"), "w")  , indent=6)
@@ -362,9 +370,19 @@ def train_mode(args):
         logger.info(f"Train Loss {trainloss}")
         evalloss, accuracy_val, precision_val, recall_val, f1_val, result = evalutaion(args, model, device, loader_val, epoch, earlystopping)
         val_res[str(epoch)] = [ trainloss, evalloss, accuracy_val, precision_val, recall_val, f1_val, result ]
-    json.dump( val_res, open(os.path.join(args.saved_model_path, "epoch.json"), "w") )    
-    testloss, accuracy_test, precision_test, recall_test, f1_test, result_test = test_eval(args, device, loader_test)
-    json.dump( [testloss, accuracy_test, precision_test, recall_test, f1_test, result_test], open(os.path.join(args.saved_model_path, "test.json"), "w") )
+    json.dump( val_res, open(os.path.join(args.saved_model_path, "epoch.json"), "w"), indent=6 )
+    
+    test_res = {}
+    logger.info(f"Test Model Build")
+    model = build_model(args, device)
+    for tp in test_projects:
+        logger.info(f"Test Project {tp}")
+        dataset_inmemory = dataset_list[tp] 
+        test_dataset = dataset_inmemory.data
+        loader_test = DataLoader( test_dataset, batch_size=min(int(args.batch_size/2), len(test_dataset)), shuffle=False, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
+        testloss, accuracy_test, precision_test, recall_test, f1_test, result_test = test_eval(args, model, device, loader_test)
+        test_res[tp] = [ testloss, accuracy_test, precision_test, recall_test, f1_test, result_test ]
+    json.dump( test_res, open(os.path.join(args.saved_model_path, "test.json"), "w"), indent=6  )
 
 
 if __name__ == "__main__":
@@ -418,7 +436,7 @@ if __name__ == "__main__":
                         help='learning rate (default: 0.001)')
     parser.add_argument('--warmup_schedule', type=str, default="no",
                         help='warmup')
-    parser.add_argument('--task', type=str, default="killed",
+    parser.add_argument('--task', type=str, default="relevance",
                         help='[killed, relevance]')
     parser.add_argument('--lazy', type=str, default="no",
                         help='save model')
@@ -433,6 +451,6 @@ if __name__ == "__main__":
     assert len(args.projects) == 1
     logger = get_logger(os.path.join(args.saved_model_path, "log.txt"))
     logger.info('start training!')
-    train_mode(args)
+    train_one_test_many(args)
     logger.info('finishing training!')
 

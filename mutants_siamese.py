@@ -67,7 +67,7 @@ def train(args, model, device, loader, optimizer, scheduler):
             loss = contrastive_loss( x_s, x_t, 1 - y)
         elif args.loss == "SCL":
             cross_loss =  criterion( pred, y) 
-            contrastive_l = self_contrastive_loss( torch.cat( (x_s, x_t),  dim=1) ) 
+            contrastive_l = self_contrastive_loss( torch.cat( (x_s, x_t),  dim=1).cpu().detach().numpy(), y.cpu().detach().numpy() ) 
             loss = (lam * contrastive_l) + (1 - lam) * (cross_loss)
         else:
             assert False, f"Wrong loss name {args.loss}"
@@ -165,6 +165,7 @@ def test_eval(args, device, loader_test):
     logger.info(f"Trainable Parameters Model {pytorch_total_params}\n")
     model.load_state_dict( torch.load(os.path.join(args.saved_model_path, "saved_model.pt"), map_location="cpu") )
     model.to(device)
+    model.eval()
     testloss, accuracy_test, precision_test, recall_test, f1_test, result_test = eval(args, model, device, loader_test)
     logger.info(f" Test, Eval Loss {testloss}, Accuracy {accuracy_test}, Precision {precision_test}, Recall {recall_test}, F1 {f1_test}"  )
     return testloss, accuracy_test, precision_test, recall_test, f1_test, result_test
@@ -190,7 +191,7 @@ def eval(args, model, device, loader):
                 loss = contrastive_loss( x_s, x_t, 1 - y)
             elif args.loss == "SCL":
                 cross_loss =  criterion( outputs, y) 
-                contrastive_l = self_contrastive_loss( torch.cat( (x_s, x_t),  dim=1) ) 
+                contrastive_l = self_contrastive_loss( torch.cat( (x_s, x_t),  dim=1).cpu().detach().numpy() , y.cpu().detach().numpy() )
                 loss = (lam * contrastive_l) + (1 - lam) * (cross_loss)
             else:
                 assert False, f"Wrong loss name {args.loss}"
@@ -419,7 +420,7 @@ if __name__ == "__main__":
                         help='save model')
     parser.add_argument("--projects", nargs="+", default=["collections"])
     parser.add_argument("--remove_projects", nargs="+", default=[])
-    parser.add_argument("--loss", type=str, default="CE", help='[both, CT, CE, SCL]')
+    parser.add_argument("--loss", type=str, default="CE", help='[both, CL, CE, SCL]')
 
     args = parser.parse_args( )
     with open(args.saved_model_path+'/commandline_args.txt', 'w') as f:

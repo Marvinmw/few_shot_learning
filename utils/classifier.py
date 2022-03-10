@@ -9,7 +9,7 @@ class PredictionLinearModelFineTune( nn.Module ):
         #self.alpha = nn.Parameter(torch.tensor(0.5), requires_grad=True)
         #self.beta = 1 - self.alpha
         #self.addedMutantType = addedMutantType
-        self.dense = nn.Linear(in_dim*2, in_dim*2)
+        self.dense = nn.Linear(in_dim*2*2, in_dim*2)
         self.dropout = nn.Dropout(dropratio)
         self.out_proj = nn.Linear( in_dim*2, out_dim)
         #self.type_embeddings = nn.Embedding(9, in_dim//3, padding_idx=0)
@@ -22,9 +22,9 @@ class PredictionLinearModelFineTune( nn.Module ):
         x_s,_,  _ = self.encoder.getVector(batch.x_s, batch.edge_index_s, batch.edge_attr_s, batch.x_s_batch, batch.ins_length_s)   
         x_t,_,  _ = self.encoder.getVector(batch.x_t, batch.edge_index_t, batch.edge_attr_t, batch.x_t_batch, batch.ins_length_t)  
         
-       # x0 = torch.square(torch.sub(x_s, x_t))
-       # x2 = torch.sub(x_s, x_t)
-        x = torch.cat( (x_s, x_t) , dim=1)
+        x0 = torch.square(torch.sub(x_s, x_t))
+        x2 = torch.sub(x_s, x_t)
+        x = torch.cat( (x_s, x_t, x0, x2) , dim=1)
         x = self.dropout(x)
         x = self.dense(x)
         x = torch.relu(x)

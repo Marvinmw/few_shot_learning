@@ -61,9 +61,9 @@ class SelfContrastiveLoss(nn.Module):
     SUPERVISED CONTRASTIVE LEARNING FOR PRE-TRAINED LANGUAGE MODEL FINE-TUNING
     """
 
-    def __init__(self, tmp: float = 0.5):
+    def __init__(self, temp: float = 0.5):
         super(SelfContrastiveLoss, self).__init__()
-        self.tmp = tmp
+        self.temp = temp
  
 
     

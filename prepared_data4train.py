@@ -30,7 +30,7 @@ def fecth_datalist(args, projects):
         #set up dataset dataset_path
         print(p)
         if args.task == "relevance":
-            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0.8)
+            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0)
         else:
             dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p)
         dataset_list[p] = dataset_inmemory
