@@ -5,7 +5,6 @@ from utils.mutantsdataset import MutantKilledDataset, MutantRelevanceDataset
 import argparse
 import json
 from torch_geometric.data import DataLoader
-import csv
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -13,7 +12,7 @@ import os
 from tqdm import tqdm
 import numpy as np
 from utils.model import  GNN_encoder
-from utils.tools import performance, TokenIns
+from utils.tools import performance, TokenIns, get_logger
 from utils.pytorchtools import EarlyStopping
 from utils.AverageMeter import AverageMeter
 from utils.classifier import PredictionLinearModelFineTune
@@ -43,7 +42,7 @@ temprature = 0.3  # temprature for contrastive loss
 lam = 0.9  # lambda for loss
 self_contrastive_loss = SelfContrastiveLoss(temprature)
 
-def train(args, model, device, loader, optimizer, loader_val, loader_test, epoch, saved_model_path, earlystopping, scheduler, dataset_list):
+def train(args, model, device, loader, optimizer, scheduler):
     global best_f1
     global view_test_f1
     model.train()
@@ -88,53 +87,100 @@ def train(args, model, device, loader, optimizer, loader_val, loader_test, epoch
         y_true.extend( y.detach().cpu())
         _, predicted_labels = torch.max( pred, dim=1 )
         y_pred.extend(predicted_labels.detach().cpu())
-        if step%args.save_steps == 0 :
-            print("Evaluation ")
-            model.eval()
-            evalloss, accuracy_val, precision_val, recall_val, f1_val, result = eval(args, model, device, loader_val)
-            test_res={}
-            avg_test_f1 = 0
-            avg_test_recall = 0
-            avg_test_acc = 0
-            avg_test_pre = 0
-            avg_test_loss = 0
+        #if step%args.save_steps == 0 and args.evalutaionInEpoch :
+        #    print("Evaluation ")
+        #    model.eval()
+        #    evalloss, accuracy_val, precision_val, recall_val, f1_val, result = eval(args, model, device, loader_val)
+            # test_res={}
+            # avg_test_f1 = 0
+            # avg_test_recall = 0
+            # avg_test_acc = 0
+            # avg_test_pre = 0
+            # avg_test_loss = 0
             
-            testloss, accuracy_test, precision_test, recall_test, f1_test, result_test = eval(args, model, device, loader_test)
-            test_res = [ testloss, accuracy_test, precision_test, recall_test, f1_test, result_test  ]
-            avg_test_f1 += f1_test
-            avg_test_recall += recall_test
-            avg_test_acc += accuracy_test
-            avg_test_pre += precision_test
-            avg_test_loss += testloss
+            # testloss, accuracy_test, precision_test, recall_test, f1_test, result_test = eval(args, model, device, loader_test)
+            # test_res = [ testloss, accuracy_test, precision_test, recall_test, f1_test, result_test  ]
+            # avg_test_f1 += f1_test
+            # avg_test_recall += recall_test
+            # avg_test_acc += accuracy_test
+            # avg_test_pre += precision_test
+            # avg_test_loss += testloss
 
-            earlystopping(f1_val, model, performance={"val_f1":f1_val, "test_f1":f1_test,"epoch":epoch, "test":test_res, 
-                                            "val":[evalloss, accuracy_val, precision_val, recall_val, f1_val, testloss, result]})
-            model.train()
-            print(f"Best Test {view_test_f1}")
-            print(f"\nEpoch {step}/{epoch}, Valid, Eval Loss {evalloss}, Accuracy {accuracy_val}, Precision {precision_val}, Recall {recall_val}, F1 {f1_val}"  )
-            print(f"\nEpoch {step}/{epoch}, Test, Eval Loss {avg_test_loss}, Accuracy {avg_test_acc}, Precision {avg_test_pre}, Recall {avg_test_recall}, F1 {avg_test_f1}"  )
-            if f1_val > best_f1 :
-                best_f1 = f1_val
-                view_test_f1 = avg_test_f1
+            # earlystopping(f1_val, model, performance={"val_f1":f1_val, "test_f1":f1_test,"epoch":epoch, "test":test_res, 
+            #                                 "val":[evalloss, accuracy_val, precision_val, recall_val, f1_val, testloss, result]})
+        #    earlystopping(f1_val, model, performance={"val_f1":f1_val, "epoch":epoch, 
+        #                                    "val":[evalloss, accuracy_val, precision_val, recall_val, f1_val, result]})
+        #    model.train()
+        #    print(f"Best Test {view_test_f1}")
+        #    print(f"\nEpoch {step}/{epoch}, Valid, Eval Loss {evalloss}, Accuracy {accuracy_val}, Precision {precision_val}, Recall {recall_val}, F1 {f1_val}"  )
+            #print(f"\nEpoch {step}/{epoch}, Test, Eval Loss {avg_test_loss}, Accuracy {avg_test_acc}, Precision {avg_test_pre}, Recall {avg_test_recall}, F1 {avg_test_f1}"  )
+        #    if f1_val > best_f1 :
+        #        best_f1 = f1_val
+                #view_test_f1 = avg_test_f1
                 # if earlystopping.save_model:
                 #     torch.save(model.state_dict(), os.path.join(saved_model_path,  f"best_epoch{epoch}_.pth"))
-            res.append([accuracy_val, precision_val, recall_val, f1_val])
+        #    res.append([accuracy_val, precision_val, recall_val, f1_val])
+    
+    # print("Evaluation ")
+    # epcoh_res = []
+    # accuracy_train, precision_train, recall_train, f1_train, = performance(y_true, y_pred, average="binary")
+    # print(f"\nEpoch {epoch}, Train,  Loss {trainloss.avg}, Accuracy {accuracy_train}, Precision {precision_train}, Recall {recall_train}, F1 {f1_train}"  )
+    # epcoh_res.extend( [accuracy_train, precision_train, recall_train, f1_train ] )
+    # evalloss, accuracy_val, precision_val, recall_val, f1_val,_ = eval(args, model, device, loader_val)
+    # print(f"\nEpoch {epoch}, Valid,  Loss {evalloss}, Accuracy {accuracy_val}, Precision {precision_val}, Recall {recall_val}, F1 {f1_val}"  )
+    # epcoh_res.extend( [ evalloss, accuracy_val, precision_val, recall_val, f1_val ] )
+    #return epcoh_res, res, f1_val
+    return trainloss.avg
+
+def evalutaion(args, model, device, loader_val, epoch, earlystopping ):
+    global best_f1
+    global view_test_f1
     model.eval()
-    print("Evaluation ")
-    epcoh_res = []
-    accuracy_train, precision_train, recall_train, f1_train, = performance(y_true, y_pred, average="binary")
-    print(f"\nEpoch {epoch}, Train,  Loss {trainloss.avg}, Accuracy {accuracy_train}, Precision {precision_train}, Recall {recall_train}, F1 {f1_train}"  )
-    epcoh_res.extend( [accuracy_train, precision_train, recall_train, f1_train ] )
-    evalloss, accuracy_val, precision_val, recall_val, f1_val,_ = eval(args, model, device, loader_val)
-    print(f"\nEpoch {epoch}, Valid,  Loss {evalloss}, Accuracy {accuracy_val}, Precision {precision_val}, Recall {recall_val}, F1 {f1_val}"  )
-    epcoh_res.extend( [ evalloss, accuracy_val, precision_val, recall_val, f1_val ] )
-    return epcoh_res, res, f1_val
+    evalloss, accuracy_val, precision_val, recall_val, f1_val, result = eval(args, model, device, loader_val)
+    earlystopping(f1_val, model, performance={"val_f1":f1_val, "epoch":epoch,
+                                            "val":[evalloss, accuracy_val, precision_val, recall_val, f1_val, result]})
+      
+    logger.info(f"Best Test {view_test_f1}")
+    logger.info(f"Epoch {epoch}, Valid, Eval Loss {evalloss}, Accuracy {accuracy_val}, Precision {precision_val}, Recall {recall_val}, F1 {f1_val}"  )
+    if f1_val > best_f1 :
+            best_f1 = f1_val
+    return evalloss, accuracy_val, precision_val, recall_val, f1_val, result
+
+def test_eval(args, device, loader_test):
+    #set up model
+    tokenizer_word2vec = TokenIns( 
+            word2vec_file=os.path.join(args.sub_token_path, args.emb_file),
+            tokenizer_file=os.path.join(args.sub_token_path, "fun.model")
+        )
+    embeddings, word_emb_dim, vocab_size = tokenizer_word2vec.load_word2vec_embeddings()
+    encoder = GNN_encoder(args.num_layer,vocab_size, word_emb_dim, args.lstm_emb_dim, args.num_class, JK = args.JK, drop_ratio = args.dropout_ratio, 
+                            graph_pooling = args.graph_pooling, gnn_type = args.gnn_type, subword_emb=args.subword_embedding,
+                            bidrection=args.bidirection, task="mutants", repWay=args.repWay)
+    pytorch_total_params = sum(p.numel() for p in encoder.parameters() if p.requires_grad)
+    logger.info(f"Trainable Parameters Encoder {pytorch_total_params}\n")
+    
+    encoder.gnn.embedding.fine_tune_embeddings(True)
+    if not args.input_model_file == "-1":
+            encoder.gnn.embedding.init_embeddings(embeddings)
+            logger.info(f"Load Pretraning model {args.input_model_file}")
+            encoder.from_pretrained(args.input_model_file + ".pth", device)
+  
+    pytorch_total_params = sum(p.numel() for p in encoder.parameters() if p.requires_grad)
+    logger.info(f"\nTotal Number of Parameters of Model, {pytorch_total_params}")
+    model = PredictionLinearModelFineTune(600, args.num_class, encoder, args.dropratio)
+    pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    logger.info(f"Trainable Parameters Model {pytorch_total_params}\n")
+    model.load_state_dict( torch.load(os.path.join(args.saved_model_path, "saved_model.pt"), map_location="cpu") )
+    model.to(device)
+    testloss, accuracy_test, precision_test, recall_test, f1_test, result_test = eval(args, model, device, loader_test)
+    logger.info(f" Test, Eval Loss {testloss}, Accuracy {accuracy_test}, Precision {precision_test}, Recall {recall_test}, F1 {f1_test}"  )
+    return testloss, accuracy_test, precision_test, recall_test, f1_test, result_test
 
 def eval(args, model, device, loader):
     y_true = []
     y_prediction = []
     evalloss = AverageMeter()
-    for step, batch in enumerate(loader):
+    for step, batch in enumerate(tqdm(loader, desc="Iteration")):
         batch = batch.to(device)
         with torch.no_grad():
             outputs,x_s, x_t = model(batch)
@@ -183,8 +229,10 @@ def fecth_datalist(args, projects):
     for p in projects:
         if args.task == "killed":
             dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
-        else:
+        elif args.task == "relevance":
             dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
+        else:
+            assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
         dataset_list[p] = dataset_inmemory
     return dataset_list
 
@@ -197,6 +245,8 @@ def create_dataset(args, train_projects, dataset_list):
             dataset_inmemory = dataset_list[tp] 
             dataset = dataset_inmemory.data
             data.extend( dataset )
+    #data=data[:2000] # for local debug
+    #args.batch_size=64 # for local debug
     random.shuffle(data)
     test_size = int(len(data)*0.2)
     val_size = int((len(data)-test_size)*0.2)
@@ -205,17 +255,17 @@ def create_dataset(args, train_projects, dataset_list):
     valid_dataset = data[train_size : train_size+ val_size]
     test_dataset=data[  train_size+ val_size: ]
             
-    y = [ d.y.item() for d in train_dataset ]
+    y = [ d.by.item() for d in train_dataset ]
     train_stat = collections.Counter(y)
     #train_dataset = balanced_oversample(train_dataset, y)
     loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
-    val_y = [ d.y.item() for d in valid_dataset ]
+    val_y = [ d.by.item() for d in valid_dataset ]
     val_stat = collections.Counter( val_y )
     print(len(valid_dataset))
     print(len(test_dataset))
     loader_val = DataLoader( valid_dataset, batch_size=min(int(args.batch_size/2), len(valid_dataset)), shuffle=False, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
     loader_test = DataLoader( test_dataset, batch_size=min(int(args.batch_size/2),len(test_dataset)), shuffle=False, num_workers = args.num_workers,follow_batch=['x_s', 'x_t']  )
-    test_y = [ d.y.item() for d in test_dataset ]
+    test_y = [ d.by.item() for d in test_dataset ]
     test_stat = collections.Counter( test_y )
 
     return loader, loader_val, loader_test, train_projects, {"train":train_stat, "val":val_stat, "test":test_stat}
@@ -245,7 +295,7 @@ def projects_dict(args):
 
 def train_mode(args):
     os.makedirs( args.saved_model_path, exist_ok=True)
-    set_seed(0)
+    set_seed(args)
     device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(0)
@@ -264,7 +314,7 @@ def train_mode(args):
     args.saved_model_path = f"{orgsavedpat}"
     if not os.path.isdir(args.saved_model_path):
             os.makedirs(args.saved_model_path)
-    print(args.saved_model_path)
+    logger.info(args.saved_model_path)
     
 
     loader, loader_val,  loader_test, train_projects, stat = create_dataset(args, train_projects, dataset_list)
@@ -283,21 +333,21 @@ def train_mode(args):
                             graph_pooling = args.graph_pooling, gnn_type = args.gnn_type, subword_emb=args.subword_embedding,
                             bidrection=args.bidirection, task="mutants", repWay=args.repWay)
     pytorch_total_params = sum(p.numel() for p in encoder.parameters() if p.requires_grad)
-    print(f"Trainable Parameters Encoder {pytorch_total_params}\n")
+    logger.info(f"Trainable Parameters Encoder {pytorch_total_params}\n")
     
     encoder.gnn.embedding.fine_tune_embeddings(True)
     if not args.input_model_file == "-1":
             encoder.gnn.embedding.init_embeddings(embeddings)
-            print(f"Load Pretraning model {args.input_model_file}")
+            logger.info(f"Load Pretraning model {args.input_model_file}")
             encoder.from_pretrained(args.input_model_file + ".pth", device)
   
     pytorch_total_params = sum(p.numel() for p in encoder.parameters() if p.requires_grad)
-    print(f"\nTotal Number of Parameters of Model, {pytorch_total_params}")
+    logger.info(f"\nTotal Number of Parameters of Model, {pytorch_total_params}")
     model = PredictionLinearModelFineTune(600, num_class, encoder, args.dropratio)
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"Trainable Parameters Model {pytorch_total_params}\n")
-    if not args.saved_model_file == "-1":
-        model.load_state_dict( torch.load(args.saved_model_file, map_location="cpu") )
+    logger.info(f"Trainable Parameters Model {pytorch_total_params}\n")
+    if not args.saved_transfer_model_file == "-1":
+        model.load_state_dict( torch.load(args.saved_transfer_model_file, map_location="cpu") )
     model.to(device)
 
     #set up optimizer
@@ -309,31 +359,25 @@ def train_mode(args):
                                                         num_training_steps=args.max_steps)
     args.warmup_schedule = False if args.warmup_schedule == "no" else True
     save_model = False if args.lazy == "yes" else True
-    f0 = open(args.log_file, "w")
-    f1 = open( args.log_file+"_epoch" , "w")
-    f = csv.writer( f0 )
-    ef = csv.writer( f1 )
-    f.writerow(["Accuracy", "Precsion", "Recall", "F1"])
-    ef.writerow(["Accuracy", "Precsion", "Recall", "F1", "Val Loss","Val Accuracy", "Val Precsion", "Val Recall", "Val F1", "Test Loss",
-                        "Test Accuracy", "Test Precsion", "Test Recall", "Test F1"])
-    epoch_res = [ ]
-    if args.loss == "CT":
+
+    if args.loss == "CL":
         earlystopping = EarlyStopping(monitor="loss", patience=50, verbose=True, path=args.saved_model_path, save_model=save_model)
     else:
         earlystopping = EarlyStopping(monitor="f1", patience=50, verbose=True, path=args.saved_model_path, save_model=save_model)
+    val_res ={}
     for epoch in range(1, args.epochs+1):
-        print(" ====epoch === " + str(epoch))
-        performance_model, evalstepres, _  = train(args, model, device, loader, optimizer, loader_val, loader_test,epoch, args.saved_model_path, earlystopping, scheduler, dataset_list)
-        epoch_res.append( performance_model )
-        for r in evalstepres:
-            f.writerow(r)
-    f0.close()
-    for r in epoch_res:
-        ef.writerow(r)
-    f1.close()
+        logger.info(" ====epoch === " + str(epoch))
+        trainloss = train(args, model, device, loader, optimizer, scheduler )
+        logger.info(f"Train Loss {trainloss}")
+        evalloss, accuracy_val, precision_val, recall_val, f1_val, result = evalutaion(args, model, device, loader_val, epoch, earlystopping)
+        val_res[str(epoch)] = [ trainloss, evalloss, accuracy_val, precision_val, recall_val, f1_val, result ]
+    json.dump( val_res, open(os.path.join(args.saved_model_path, "epoch.json"), "w") )    
+    testloss, accuracy_test, precision_test, recall_test, f1_test, result_test = test_eval(args, device, loader_test)
+    json.dump( [testloss, accuracy_test, precision_test, recall_test, f1_test, result_test], open(os.path.join(args.saved_model_path, "test.json"), "w") )
 
-def main():
-    # Training settings
+
+if __name__ == "__main__":
+     # Training settings
     parser = argparse.ArgumentParser(description='PyTorch implementation of pre-training of graph neural networks')
     parser.add_argument('--device', type=int, default=0,
                         help='which gpu to use if any (default: 0)')
@@ -366,17 +410,18 @@ def main():
     parser.add_argument('--repWay', type=str, default="append", help='seq, append, graph, alpha')
     parser.add_argument('--nonodeembedding', dest='nonodeembedding', action='store_true', default=False)
     parser.add_argument('--dataset', type=str, default = 'DV_PDG', help='root directory of dataset. For now, only classification.')
-    parser.add_argument('--dataset_path', type=str, default = 'dataset/mutants_small/', help='root directory of dataset. For now, only classification.')
+    parser.add_argument('--dataset_path', type=str, default = 'dataset/pittest/', help='root directory of dataset. For now, only classification.')
     parser.add_argument('--input_model_file', type=str, default = 'pretrained_models/context/gat/model_0', help='filename to read the model (if there is any)')
-    parser.add_argument('--saved_model_file', type=str, default= "-1", )
+    parser.add_argument('--saved_transfer_model_file', type=str, default= "-1", )
     #parser.add_argument('--pre', type=str, default= "yes", help="warm up training for this task")
-    parser.add_argument('--target_token_path', type=str, default = 'dataset/downstream/java-small/target_word_to_index.json', help='Target Vocab')
+    #parser.add_argument('--target_token_path', type=str, default = 'dataset/downstream/java-small/target_word_to_index.json', help='Target Vocab')
     parser.add_argument('--saved_model_path', type = str, default = 'results/mutants_siamese/context', help='filename to output the pre-trained model')
     parser.add_argument('--num_workers', type=int, default = 8, help='number of workers for dataset loading')
     parser.add_argument('--sub_token_path', type=str, default = './tokens/jars', help='sub tokens vocab and embedding path')
     parser.add_argument('--emb_file', type=str, default = 'emb_100.txt', help='embedding txt path')
     parser.add_argument('--log_file', type = str, default = 'log.txt', help='log file')
     parser.add_argument('--num_class', type = int, default =2, help='num_class')
+    parser.add_argument('--seed', type = int, default =0, help='seed')
     parser.add_argument('--dropratio', type = float, default =0.25, help='drop_ratio')
     parser.add_argument('--lr', type=float, default=0.001,
                         help='learning rate (default: 0.001)')
@@ -400,12 +445,9 @@ def main():
             if p not in args.remove_projects:
                 usedp.append( p  )
         args.projects = usedp
-
+    assert len(args.projects) == 4
+    logger = get_logger(os.path.join(args.saved_model_path, "log.txt"))
+    logger.info('start training!')
     train_mode(args)
-
-    
-
-
-if __name__ == "__main__":
-    main()
+    logger.info('finishing training!')
 

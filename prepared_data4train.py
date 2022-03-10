@@ -82,7 +82,7 @@ def main():
     parser.add_argument("--dataset_path", type=str, default="dataset/pittest")
     parser.add_argument("--dataset", type=str, default="DV_PDG")
     parser.add_argument("--task", type=str, default="relevance")
-    parser.add_argument("--projects", nargs="+", default=["collections", "csv", "io", "text"])
+    parser.add_argument("--projects", nargs="+", default=["collections", "csv", "io", "text", "lang"])
     parser.add_argument('--seed', type = int, default =1234)
     args = parser.parse_args( )
     set_seed(args)
