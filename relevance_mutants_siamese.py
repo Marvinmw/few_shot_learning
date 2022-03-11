@@ -15,7 +15,7 @@ from utils.model import  GNN_encoder
 from utils.tools import performance, TokenIns
 from utils.pytorchtools import EarlyStopping
 from utils.AverageMeter import AverageMeter
-from utils.classifier import PredictionLinearModelFineTune
+from utils.classifier import MutantPairwiseModel
 from utils.ContrastiveLoss import ContrastiveLoss 
 import collections
 import random
@@ -261,7 +261,7 @@ def train_mode(args):
   
     pytorch_total_params = sum(p.numel() for p in encoder.parameters() if p.requires_grad)
     print(f"\nTotal Number of Parameters of Model, {pytorch_total_params}")
-    model = PredictionLinearModelFineTune(600, num_class,encoder,False if args.mutant_type == "no" else True,args.dropratio)
+    model = MutantPairwiseModel(600, num_class,encoder,False if args.mutant_type == "no" else True,args.dropratio)
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Trainable Parameters Model {pytorch_total_params}\n")
     if not args.saved_model_file == "-1":
