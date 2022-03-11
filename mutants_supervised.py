@@ -1,7 +1,7 @@
 import sys
 # setting path
 sys.path.append('../')
-from utils.mutantsdataset import MutantKilledDataset, MutantRelevanceDataset, balanced_subsample
+from utils.mutantsdataset import MutantKilledDataset, MutantRelevanceDataset
 import argparse
 import json
 from torch_geometric.data import DataLoader
@@ -15,7 +15,7 @@ from utils.model import  GNN_encoder
 from utils.tools import performance, TokenIns, get_logger
 from utils.pytorchtools import EarlyStopping
 from utils.AverageMeter import AverageMeter
-from utils.classifier import PredictionLinearModelFineTune
+from utils.classifier import MutantPairwiseModel
 from utils.ContrastiveLoss import ContrastiveLoss, SelfContrastiveLoss
 import collections
 from torch.utils.data import WeightedRandomSampler
@@ -54,21 +54,17 @@ def train(args, model, device, loader, optimizer, scheduler):
     for step, batch in enumerate(tqdm(loader, desc="Iteration")):
         batch = batch.to(device)
         optimizer.zero_grad()      
-        pred,  x_s, x_t = model(batch)    
+        pred,  feature = model(batch)    
         if args.num_class == 2:
             y = batch.by
         else:
             y = batch.my
        
-        if args.loss == "both":
-            loss =  0.5 * criterion( pred, y) + contrastive_loss( x_s, x_t, 1 - y)  * (1 - 0.5)
-        elif args.loss == "CE":
+        if  args.loss == "CE":
             loss =  criterion( pred, y) 
-        elif args.loss == "CL":
-            loss = contrastive_loss( x_s, x_t, 1 - y)
         elif args.loss == "SCL":
             cross_loss =  criterion( pred, y) 
-            contrastive_l = self_contrastive_loss( torch.cat( (x_s, x_t),  dim=1).cpu().detach().numpy(), y.cpu().detach().numpy() ) 
+            contrastive_l = self_contrastive_loss( feature.cpu().detach().numpy(), y.cpu().detach().numpy() ) 
             loss = (lam * contrastive_l) + (1 - lam) * (cross_loss)
         else:
             assert False, f"Wrong loss name {args.loss}"
@@ -81,49 +77,7 @@ def train(args, model, device, loader, optimizer, scheduler):
         y_true.extend( y.detach().cpu())
         _, predicted_labels = torch.max( pred, dim=1 )
         y_pred.extend(predicted_labels.detach().cpu())
-        #if step%args.save_steps == 0 and args.evalutaionInEpoch :
-        #    print("Evaluation ")
-        #    model.eval()
-        #    evalloss, accuracy_val, precision_val, recall_val, f1_val, result = eval(args, model, device, loader_val)
-            # test_res={}
-            # avg_test_f1 = 0
-            # avg_test_recall = 0
-            # avg_test_acc = 0
-            # avg_test_pre = 0
-            # avg_test_loss = 0
-            
-            # testloss, accuracy_test, precision_test, recall_test, f1_test, result_test = eval(args, model, device, loader_test)
-            # test_res = [ testloss, accuracy_test, precision_test, recall_test, f1_test, result_test  ]
-            # avg_test_f1 += f1_test
-            # avg_test_recall += recall_test
-            # avg_test_acc += accuracy_test
-            # avg_test_pre += precision_test
-            # avg_test_loss += testloss
 
-            # earlystopping(f1_val, model, performance={"val_f1":f1_val, "test_f1":f1_test,"epoch":epoch, "test":test_res, 
-            #                                 "val":[evalloss, accuracy_val, precision_val, recall_val, f1_val, testloss, result]})
-        #    earlystopping(f1_val, model, performance={"val_f1":f1_val, "epoch":epoch, 
-        #                                    "val":[evalloss, accuracy_val, precision_val, recall_val, f1_val, result]})
-        #    model.train()
-        #    print(f"Best Test {view_test_f1}")
-        #    print(f"\nEpoch {step}/{epoch}, Valid, Eval Loss {evalloss}, Accuracy {accuracy_val}, Precision {precision_val}, Recall {recall_val}, F1 {f1_val}"  )
-            #print(f"\nEpoch {step}/{epoch}, Test, Eval Loss {avg_test_loss}, Accuracy {avg_test_acc}, Precision {avg_test_pre}, Recall {avg_test_recall}, F1 {avg_test_f1}"  )
-        #    if f1_val > best_f1 :
-        #        best_f1 = f1_val
-                #view_test_f1 = avg_test_f1
-                # if earlystopping.save_model:
-                #     torch.save(model.state_dict(), os.path.join(saved_model_path,  f"best_epoch{epoch}_.pth"))
-        #    res.append([accuracy_val, precision_val, recall_val, f1_val])
-    
-    # print("Evaluation ")
-    # epcoh_res = []
-    # accuracy_train, precision_train, recall_train, f1_train, = performance(y_true, y_pred, average="binary")
-    # print(f"\nEpoch {epoch}, Train,  Loss {trainloss.avg}, Accuracy {accuracy_train}, Precision {precision_train}, Recall {recall_train}, F1 {f1_train}"  )
-    # epcoh_res.extend( [accuracy_train, precision_train, recall_train, f1_train ] )
-    # evalloss, accuracy_val, precision_val, recall_val, f1_val,_ = eval(args, model, device, loader_val)
-    # print(f"\nEpoch {epoch}, Valid,  Loss {evalloss}, Accuracy {accuracy_val}, Precision {precision_val}, Recall {recall_val}, F1 {f1_val}"  )
-    # epcoh_res.extend( [ evalloss, accuracy_val, precision_val, recall_val, f1_val ] )
-    #return epcoh_res, res, f1_val
     return trainloss.avg
 
 def evalutaion(args, model, device, loader_val, epoch, earlystopping ):
@@ -161,7 +115,7 @@ def test_eval(args, device, loader_test):
   
     pytorch_total_params = sum(p.numel() for p in encoder.parameters() if p.requires_grad)
     logger.info(f"\nTotal Number of Parameters of Model, {pytorch_total_params}")
-    model = PredictionLinearModelFineTune(600, args.num_class, encoder, args.dropratio)
+    model = MutantPairwiseModel(600, args.num_class, encoder, args.dropratio)
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info(f"Trainable Parameters Model {pytorch_total_params}\n")
     model.load_state_dict( torch.load(os.path.join(args.saved_model_path, "saved_model.pt"), map_location="cpu") )
@@ -178,21 +132,17 @@ def eval(args, model, device, loader):
     for step, batch in enumerate(tqdm(loader, desc="Iteration")):
         batch = batch.to(device)
         with torch.no_grad():
-            outputs,x_s, x_t = model(batch)
+            outputs, feature = model(batch)
             if args.num_class == 2:
                 y = batch.by
             else:
                 y = batch.my
 
-            if args.loss == "both":
-                loss =  0.5 * criterion( outputs, y) + contrastive_loss( x_s, x_t, 1 - y)  * (1 - 0.5)
-            elif args.loss == "CE":
+            if args.loss == "CE":
                 loss =  criterion( outputs, y) 
-            elif args.loss == "CL":
-                loss = contrastive_loss( x_s, x_t, 1 - y)
             elif args.loss == "SCL":
                 cross_loss =  criterion( outputs, y) 
-                contrastive_l = self_contrastive_loss( torch.cat( (x_s, x_t),  dim=1).cpu().detach().numpy() , y.cpu().detach().numpy() )
+                contrastive_l = self_contrastive_loss( feature.cpu().detach().numpy() , y.cpu().detach().numpy() )
                 loss = (lam * contrastive_l) + (1 - lam) * (cross_loss)
             else:
                 assert False, f"Wrong loss name {args.loss}"
@@ -340,7 +290,7 @@ def train_mode(args):
   
     pytorch_total_params = sum(p.numel() for p in encoder.parameters() if p.requires_grad)
     logger.info(f"\nTotal Number of Parameters of Model, {pytorch_total_params}")
-    model = PredictionLinearModelFineTune(600, num_class, encoder, args.dropratio)
+    model = MutantPairwiseModel(600, num_class, encoder, args.dropratio)
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info(f"Trainable Parameters Model {pytorch_total_params}\n")
     if not args.saved_transfer_model_file == "-1":
