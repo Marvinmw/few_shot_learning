@@ -1,10 +1,11 @@
 import sys
 # setting path
 sys.path.append('../')
-from utils.mutantsdataset import MutantKilledDataset, MutantRelevanceDataset, balanced_subsample
+from utils.mutantsdataset import MutantKilledDataset, MutantRelevanceDataset
 import argparse
 import json
 from torch_geometric.data import DataLoader
+from torch.utils.data import WeightedRandomSampler
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -263,22 +264,24 @@ def create_dataset(args, train_projects, dataset_list):
             dataset_inmemory = dataset_list[tp]
             dataset = dataset_inmemory.data
             data.extend( dataset )
-    #data=data[:2000] # for local debug
-    #args.batch_size=64 # for local debug
-    if args.task =="relevance":
-        y = [ d.by.item() for d in data ]
-        data_stat = collections.Counter(y)
-        data = balanced_subsample(data, y)
+   
     random.shuffle(data)
-    val_size = int(len(data)*0.2)
+    val_size = max(int(len(data)*0.2), 2)
     train_size = len(data) -val_size
     train_dataset = data[:train_size]
     valid_dataset = data[train_size : ]
    
     y = [ d.by.item() for d in train_dataset ]
     train_stat = collections.Counter(y)
+    print(train_stat)
+    print(train_stat[0])
+    weights = [ 1./train_stat[0], 1./train_stat[1]]
+    samples_weight = np.array([ weights[d.by.item()] for d in train_dataset])
+    samples_weight = torch.from_numpy(samples_weight)
+    sampler = WeightedRandomSampler(samples_weight.type('torch.DoubleTensor'), len(samples_weight))
+
    # train_dataset = balanced_oversample(train_dataset, y)
-    loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
+    loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False, sampler = sampler, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
     val_y = [ d.by.item() for d in valid_dataset ]
     val_stat = collections.Counter( val_y )
     print(len(valid_dataset))

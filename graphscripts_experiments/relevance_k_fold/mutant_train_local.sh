@@ -17,9 +17,9 @@ num_class=2
 # collections csv io lang text
 
 
-for train_project in   collections 
+for train_project in   lang 
 do
-for loss in SCL CE  both
+for loss in SCL CE
 do
 output_folder=results/scratch/mutants_relevance_${num_class}_loss_${loss}_rm_${train_project}/context
 bash run.sh gat "pretrained_models/context/gat/model_0" ${output_folder}/ attention $device $num_class $loss $train_project

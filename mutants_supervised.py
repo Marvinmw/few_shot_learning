@@ -1,7 +1,7 @@
 import sys
 # setting path
 sys.path.append('../')
-from utils.mutantsdataset import MutantKilledDataset, MutantRelevanceDataset
+from utils.mutantsdataset import MutantKilledDataset, MutantRelevanceDataset, balanced_subsample
 import argparse
 import json
 from torch_geometric.data import DataLoader
@@ -18,6 +18,7 @@ from utils.AverageMeter import AverageMeter
 from utils.classifier import PredictionLinearModelFineTune
 from utils.ContrastiveLoss import ContrastiveLoss, SelfContrastiveLoss
 import collections
+from torch.utils.data import WeightedRandomSampler
 import random
 try:
     from transformers import get_linear_schedule_with_warmup as linear_schedule
@@ -217,7 +218,7 @@ def fecth_datalist(args, projects):
         if args.task == "killed":
             dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
         elif args.task == "relevance":
-            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0.8 )
+            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0.0 )
         else:
             assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
         dataset_list[p] = dataset_inmemory
@@ -235,8 +236,11 @@ def create_dataset(args, train_projects, dataset_list):
     #data=data[:2000] # for local debug
     #args.batch_size=64 # for local debug
     random.shuffle(data)
-    test_size = int(len(data)*0.2)
-    val_size = int((len(data)-test_size)*0.2)
+    data = random.sample(data, counts=int(len(data) * args.data_ratio))
+    #data = balanced_subsample(data, y)
+    y = [ d.by.item() for d in data ]
+    test_size = int(len(data)*0.3)
+    val_size = int((len(data)-test_size)*0.3)
     train_size = len(data) - test_size -val_size
     train_dataset = data[:train_size]
     valid_dataset = data[train_size : train_size+ val_size]
@@ -244,8 +248,14 @@ def create_dataset(args, train_projects, dataset_list):
             
     y = [ d.by.item() for d in train_dataset ]
     train_stat = collections.Counter(y)
+    y = [ d.by.item() for d in train_dataset ]
+    train_stat = collections.Counter(y)
+    weights = [ 1/train_stat[0], 1/train_stat[1]]
+    samples_weight = np.array([ weights[d.by.item()] for d in train_dataset])
+    samples_weight = torch.from_numpy(samples_weight)
+    sampler = WeightedRandomSampler(samples_weight.type('torch.DoubleTensor'), len(samples_weight))
     #train_dataset = balanced_oversample(train_dataset, y)
-    loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
+    loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False, sampler=sampler, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
     val_y = [ d.by.item() for d in valid_dataset ]
     val_stat = collections.Counter( val_y )
     print(len(valid_dataset))
@@ -421,6 +431,7 @@ if __name__ == "__main__":
     parser.add_argument("--projects", nargs="+", default=["collections"])
     parser.add_argument("--remove_projects", nargs="+", default=[])
     parser.add_argument("--loss", type=str, default="CE", help='[both, CL, CE, SCL]')
+    parser.add_argument("--data_ratio", type=float, default=0.4, help='used dataset set size')
 
     args = parser.parse_args( )
     with open(args.saved_model_path+'/commandline_args.txt', 'w') as f:
