@@ -1,3 +1,4 @@
+from pydoc import describe
 import sys
 # setting path
 sys.path.append('../')
@@ -164,11 +165,11 @@ def eval(args, model, device, loader):
 import glob
 def fecth_datalist(args, projects):
     dataset_list = {}
-    for p in projects:
+    for s, p in enumerate(tqdm(projects, desc="Iteration")):
         if args.task == "killed":
             dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
         elif args.task == "relevance":
-            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0.0 )
+            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0.8 )
         else:
             assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
         dataset_list[p] = dataset_inmemory
@@ -186,7 +187,7 @@ def create_dataset(args, train_projects, dataset_list):
     #data=data[:2000] # for local debug
     #args.batch_size=64 # for local debug
     random.shuffle(data)
-    data = random.sample(data, counts=int(len(data) * args.data_ratio))
+    data = random.sample(data, int(len(data) * args.data_ratio))
     #data = balanced_subsample(data, y)
     y = [ d.by.item() for d in data ]
     test_size = int(len(data)*0.3)
@@ -217,10 +218,6 @@ def create_dataset(args, train_projects, dataset_list):
 
     return loader, loader_val, loader_test, train_projects, {"train":train_stat, "val":val_stat, "test":test_stat}
 
-def fetch_dataset(args, dataset_inmemory):
-    dataset = dataset_inmemory.data
-    loader_test = DataLoader( dataset, batch_size=int(args.batch_size/2), shuffle=False, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
-    return loader_test
 
 def projects_dict(args):
     projects = collections.defaultdict(list)
@@ -381,7 +378,7 @@ if __name__ == "__main__":
     parser.add_argument("--projects", nargs="+", default=["collections"])
     parser.add_argument("--remove_projects", nargs="+", default=[])
     parser.add_argument("--loss", type=str, default="CE", help='[both, CL, CE, SCL]')
-    parser.add_argument("--data_ratio", type=float, default=0.4, help='used dataset set size')
+    parser.add_argument("--data_ratio", type=float, default=1.0, help='used dataset set size')
 
     args = parser.parse_args( )
     with open(args.saved_model_path+'/commandline_args.txt', 'w') as f:
