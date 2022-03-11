@@ -266,7 +266,7 @@ def create_dataset(args, train_projects, dataset_list):
             data.extend( dataset )
    
     random.shuffle(data)
-    val_size = max(int(len(data)*0.2), 2)
+    val_size = max(int(len(data)*0.3), 2)
     train_size = len(data) -val_size
     train_dataset = data[:train_size]
     valid_dataset = data[train_size : ]
