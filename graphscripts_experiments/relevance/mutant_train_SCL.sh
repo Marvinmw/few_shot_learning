@@ -9,7 +9,7 @@
 #SBATCH --mail-type=end,fail
 #SBATCH --mail-user=wei.ma@uni.lu
 #SBATCH -o %x-%j.log
-
+#SBATCH -C volta32
 
 conda activate graph
 device=0
