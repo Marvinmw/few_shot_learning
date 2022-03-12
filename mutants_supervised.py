@@ -38,11 +38,14 @@ def set_seed(args):
 
 best_f1 = 0
 view_test_f1 = 0
-criterion = nn.CrossEntropyLoss()
-contrastive_loss = ContrastiveLoss()
+best_f1 = 0
+view_test_f1 = 0
+criterion = None #nn.CrossEntropyLoss()
+contrastive_loss = None #ContrastiveLoss()
 temprature = 0.3  # temprature for contrastive loss
 lam = 0.9  # lambda for loss
-self_contrastive_loss = SelfContrastiveLoss(temprature)
+self_contrastive_loss = None #SelfContrastiveLoss(device, temprature)
+suploss = None
 
 def train(args, model, device, loader, optimizer, scheduler):
     global best_f1
@@ -65,7 +68,7 @@ def train(args, model, device, loader, optimizer, scheduler):
             loss =  criterion( pred, y) 
         elif args.loss == "SCL":
             cross_loss =  criterion( pred, y) 
-            contrastive_l = self_contrastive_loss( feature.cpu().detach().numpy(), y.cpu().detach().numpy() ) 
+            contrastive_l = self_contrastive_loss( feature, y ) 
             loss = (lam * contrastive_l) + (1 - lam) * (cross_loss)
         else:
             assert False, f"Wrong loss name {args.loss}"
@@ -143,7 +146,7 @@ def eval(args, model, device, loader):
                 loss =  criterion( outputs, y) 
             elif args.loss == "SCL":
                 cross_loss =  criterion( outputs, y) 
-                contrastive_l = self_contrastive_loss( feature.cpu().detach().numpy() , y.cpu().detach().numpy() )
+                contrastive_l = self_contrastive_loss( feature , y )
                 loss = (lam * contrastive_l) + (1 - lam) * (cross_loss)
             else:
                 assert False, f"Wrong loss name {args.loss}"
@@ -244,7 +247,15 @@ def train_mode(args):
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(0)
 
-    
+    global criterion
+    global contrastive_loss
+    global self_contrastive_loss
+    global suploss
+    criterion = nn.CrossEntropyLoss()
+    contrastive_loss = ContrastiveLoss()
+
+    self_contrastive_loss = SelfContrastiveLoss(device, temprature)
+
     projects, namelist = projects_dict(args)
     
     train_projects = []
