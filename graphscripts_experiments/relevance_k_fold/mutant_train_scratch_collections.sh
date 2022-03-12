@@ -5,7 +5,7 @@
 #SBATCH -G 1
 #SBATCH --time=2-00:00:00
 #SBATCH --qos=normal
-#SBATCH -J jsc
+#SBATCH -J collections_r
 #SBATCH --mail-type=end,fail
 #SBATCH --mail-user=wei.ma@uni.lu
 #SBATCH -o %x-%j.log
@@ -14,7 +14,7 @@ conda activate graph
 device=0
 num_class=2
 
-for train_project in  collections text lang csv io 
+for train_project in  collections
 do
 for loss in  CE SCL
 do
