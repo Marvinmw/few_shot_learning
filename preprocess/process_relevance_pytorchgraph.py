@@ -159,7 +159,7 @@ def preprocess(class_method_id_json, graph_json , rawins_json
         if datatype == "mutants":
             data_geometric.mutantID = int(graph_meta_info[method_id]["mid"])
             data_geometric.interaction_mid = int(graph_meta_info[method_id]["interaction"])
-            data_geometric.interaction_graph_id = int(graph_meta_info[method_id]["interaction_mutant_graph_id"])
+            data_geometric.interaction_graph_id = -1 #int(graph_meta_info[method_id]["interaction_mutant_graph_id"])
             data_geometric.mutant_type = int(graph_meta_info[method_id]["mutator_label"])
             data_geometric.label_k_binary = int( graph_meta_info[method_id]["killed_label"] )
             data_geometric.label_k_mul = int( graph_meta_info[method_id]["killabel_mutator_label"] )
@@ -230,7 +230,24 @@ def preprocess_relevance(pfolder):
         outputdir = os.path.join( outputfolder, pid)
         shutil.rmtree(outputdir)
 
-    
+def copy_folder(pfolder):
+    mutant_meta =os.path.join(pfolder, "mutants_info_graph_ids.json") 
+    pid = os.path.basename( pfolder )
+    outputdir = os.path.join( outputfolder, pid, "raw", "mutants")
+    try:
+        shutil.copy( mutant_meta, outputdir)
+    except:
+        print(outputdir)
+   
+def run_copy(data_folder):
+    eggs = []
+    for project in os.listdir( data_folder ):
+        pfolder = os.path.join( data_folder, project )   
+        for c in os.listdir( os.path.join( pfolder ) ):
+            eggs.append(  os.path.join( pfolder, c ) )
+    with Pool(15) as p:
+        p.map(copy_folder, eggs)   
+
 def run(data_folder):
     eggs = []
     for project in os.listdir( data_folder ):
@@ -248,7 +265,7 @@ if __name__ == "__main__":
     parser.add_argument("-i", "--input", dest="input", default="./relevance_java_dot_byteinfo")
     args = parser.parse_args()
     outputfolder = args.output
-    run( args.input  )
+    run_copy( args.input  )
     
 
     

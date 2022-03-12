@@ -48,9 +48,9 @@ def replace_name(mutatns_folder, interactionfile,mutants_info, mutant_matrix_fil
   #  assert result, reid.to_csv("check_id.csv")
     interaction = pd.read_csv(interactionfile)
     interactiondata = interaction.to_dict('records')
-    interaction_mapping = {}
+    interaction_mapping = collections.defaultdict(list)
     for r in interactiondata:
-        interaction_mapping[r['mutant_outside_line_id']] = r['mutant_on_line_id']
+        interaction_mapping[r['mutant_outside_line_id']].append(r['mutant_on_line_id'])
     # df.rename({"MutantID":"ind"}, inplace=True)
     # df.rename({"lineNumber":"lineNumbers"}, inplace=True)
     # df.rename({"index":"indexes"}, inplace=True)
@@ -109,17 +109,20 @@ def replace_name(mutatns_folder, interactionfile,mutants_info, mutant_matrix_fil
             
     
     json.dump(sum_info, open(f"{outputfolder}/all_mutants_details.json", "w"), indent=6 )
+    
     for mid in mutant_info:
+        mutant_info[mid]["interaction"] = []
         if mutant_info[mid]["relevance_label"] == 1:
             if int(mutant_info[mid]["On_Change"]):
-                mutant_info[mid]["interaction"] = mid
+                mutant_info[mid]["interaction"] = []
                 continue
             rid = mid_rowid_mapping[mid] 
-            interact_rid = interaction_mapping[rid]
-            interact_mid = mid_rowid_mapping_reverse[interact_rid]
-            mutant_info[mid]["interaction"] = interact_mid
+            interact_rid_list = interaction_mapping[rid]
+            for interact_rid in interact_rid_list:
+                interact_mid = mid_rowid_mapping_reverse[interact_rid]
+                mutant_info[mid]["interaction"].append( interact_mid )
         else:
-            mutant_info[mid]["interaction"] = -1
+            mutant_info[mid]["interaction"] = []
 
     for f in glob.glob(f"{mutatns_folder}/**/**.class" , recursive=True):        
         p = Path(f)
@@ -167,14 +170,14 @@ if __name__ == '__main__':
             #  print(c_folder)
                 if os.path.isfile(c_folder):
                     continue
-                try:
-                    print(f"{c_folder}")
-                    replace_name(f"{c_folder}", f"{c_folder}/interaction_pairs.csv",f"{c_folder}/mutants_info.csv", f"{c_folder}/mutationMatrix.csv", f"{c_folder}")
-                except Exception as e:
-                     print(e)
-                     with open("failed_projects/log.txt", "a") as f:
-                         f.write(str(e))
-                     shutil.move(c_folder, "failed_projects/")
+               # try:
+                print(f"{c_folder}")
+                replace_name(f"{c_folder}", f"{c_folder}/interaction_pairs.csv",f"{c_folder}/mutants_info.csv", f"{c_folder}/mutationMatrix.csv", f"{c_folder}")
+               # except Exception as e:
+                #     print(e)
+                    #  with open("failed_projects/log.txt", "a") as f:
+                    #      f.write(str(e))
+                    #  shutil.move(c_folder, "failed_projects/")
         
         # copy original class
         for p in os.listdir(data_folder):

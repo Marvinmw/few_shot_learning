@@ -34,7 +34,7 @@ def extract_mutants_graph_task(input):
         id = splited_keys[-2]    # mid
         classname = splited_keys[-1]
 
-       # assert id not in index_mutants, f"{id}, {k}, {index_mutants[id]}"
+       # assert id not in index_mutants, f"{id}, {k}, {index_mutants[id]}" merge lamda class to the outer class
         if id not in index_mutants:
             index_mutants[ id ] = v
             if classname in org_graphs:
@@ -111,11 +111,17 @@ def extract_mutants_graph_task(input):
         assert found == 2,log_bug( mutant_info[mid], mutant_class_graphs, f"error {input} {mid} in mutants \n")
 
     for mid in mutant_info: # mutant id
-        intaracted_mutant_id = mutant_info[mid]["interaction"] 
-        if intaracted_mutant_id != -1 and intaracted_mutant_id != mid:
-            mutant_info[mid]["interaction_mutant_graph_id"] = mutant_info[intaracted_mutant_id]["mutant_graph_id"]
+        intaracted_mutant_id_list = mutant_info[mid]["interaction"] 
+        # print(mutant_info[mid])
+        # print(intaracted_mutant_id_list)
+        if len(intaracted_mutant_id_list) != 0 and mid not in intaracted_mutant_id_list:
+            mutant_info[mid]["interaction_mutant_graph_id"] = []
+            for intaracted_mutant_id in intaracted_mutant_id_list:
+                if intaracted_mutant_id not in mutant_info:
+                    continue
+                mutant_info[mid]["interaction_mutant_graph_id"].append( mutant_info[intaracted_mutant_id]["mutant_graph_id"] )
         else:
-            mutant_info[mid]["interaction_mutant_graph_id"] = -1
+            mutant_info[mid]["interaction_mutant_graph_id"] = []
     
     
 

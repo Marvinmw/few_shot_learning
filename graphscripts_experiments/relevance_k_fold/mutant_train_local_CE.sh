@@ -15,12 +15,14 @@ conda activate graph
 device=0
 num_class=2
 # collections csv io lang text
-for test_project in collections csv io lang text
+
+
+for train_project in   lang 
 do
-for loss in CE SCL both CL
+for loss in CE
 do
-output_folder=results/transfer/mutants_relevance_${num_class}_loss_${loss}_rm_${test_project}/context
-bash run.sh gat "pretrained_models/context/gat/model_0" ${output_folder}/ attention $device $num_class $loss $test_project
+output_folder=results/supervised/${loss}/mutants_relevance_${num_class}_loss_${loss}_train_${train_project}/context
+bash run.sh gat "pretrained_models/context/gat/model_0" ${output_folder}/ attention $device $num_class $loss $train_project
 done
 done
 

@@ -1,7 +1,7 @@
 import sys
 # setting path
 sys.path.append('../')
-from utils.mutantsdataset import MutantKilledDataset, MutantRelevanceDataset
+from utils.mutantsdataset import MutantKilledDataset, MutantRelevanceDataset, balanced_subsample
 import argparse
 import json
 from torch_geometric.data import DataLoader
@@ -17,7 +17,7 @@ from utils.tools import performance, TokenIns, get_logger
 from utils.pytorchtools import EarlyStopping
 from utils.AverageMeter import AverageMeter
 from utils.classifier import MutantPairwiseModel
-from utils.ContrastiveLoss import ContrastiveLoss, SelfContrastiveLoss
+from utils.ContrastiveLoss import ContrastiveLoss, SelfContrastiveLoss, SupConLoss
 import collections
 import random
 try:
@@ -37,12 +37,12 @@ def set_seed(args):
 
 best_f1 = 0
 view_test_f1 = 0
-criterion = nn.CrossEntropyLoss()
-contrastive_loss = ContrastiveLoss()
+criterion = None #nn.CrossEntropyLoss()
+contrastive_loss = None #ContrastiveLoss()
 temprature = 0.3  # temprature for contrastive loss
 lam = 0.9  # lambda for loss
-self_contrastive_loss = SelfContrastiveLoss(temprature)
-
+self_contrastive_loss = None #SelfContrastiveLoss(device, temprature)
+suploss = None
 def train(args, model, device, loader, optimizer, scheduler):
     global best_f1
     global view_test_f1
@@ -53,7 +53,7 @@ def train(args, model, device, loader, optimizer, scheduler):
     y_pred = []
     for step, batch in enumerate(tqdm(loader, desc="Iteration")):
         batch = batch.to(device)
-        optimizer.zero_grad()      
+             
         pred,  feature = model(batch)    
         if args.num_class == 2:
             y = batch.by
@@ -62,14 +62,18 @@ def train(args, model, device, loader, optimizer, scheduler):
        
         if args.loss == "CE":
             loss =  criterion( pred, y) 
+        elif args.loss == "both":
+            f=torch.split(feature, 600 , dim=1 )
+            loss = criterion(pred, y) + contrastive_loss(f[0], f[1], y)
         elif args.loss == "SCL":
             cross_loss =  criterion( pred, y) 
-            contrastive_l = self_contrastive_loss( feature.cpu().detach().numpy(), y.cpu().detach().numpy() ) 
+            contrastive_l = self_contrastive_loss( feature, y ) 
             loss = (lam * contrastive_l) + (1 - lam) * (cross_loss)
         else:
             assert False, f"Wrong loss name {args.loss}"
+        optimizer.zero_grad() 
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
+       # torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
         optimizer.step()
         if args.warmup_schedule:
             scheduler.step()  
@@ -79,8 +83,6 @@ def train(args, model, device, loader, optimizer, scheduler):
         y_pred.extend(predicted_labels.detach().cpu())
 
             
-       
-
     return trainloss.avg
 
 def evalutaion(args, model, device, loader_val, epoch, earlystopping ):
@@ -111,16 +113,16 @@ def build_model(args, device):
     logger.info(f"Trainable Parameters Encoder {pytorch_total_params}\n")
     
     encoder.gnn.embedding.fine_tune_embeddings(True)
-    if not args.input_model_file == "-1":
-            encoder.gnn.embedding.init_embeddings(embeddings)
-            logger.info(f"Load Pretraning model {args.input_model_file}")
-            encoder.from_pretrained(args.input_model_file + ".pth", device)
+    # if not args.input_model_file == "-1":
+    #         encoder.gnn.embedding.init_embeddings(embeddings)
+    #         logger.info(f"Load Pretraning model {args.input_model_file}")
+    #         encoder.from_pretrained(args.input_model_file + ".pth", device)
   
     pytorch_total_params = sum(p.numel() for p in encoder.parameters() if p.requires_grad)
     logger.info(f"\nTotal Number of Parameters of Model, {pytorch_total_params}")
     model = MutantPairwiseModel(600, args.num_class, encoder, args.dropratio)
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    logger.info(f"Trainable Parameters Model {pytorch_total_params}\n")
+    logger.info(f"Trainable Parameters Model {pytorch_total_params}, load model {args.saved_model_path}")
     model.load_state_dict( torch.load(os.path.join(args.saved_model_path, "saved_model.pt"), map_location="cpu") )
     model.to(device)
     return model
@@ -135,15 +137,21 @@ def test_eval(args, model, device, loader_test):
     ground_label = [  ]
     distill_predicted_label = []
     for mid in mutants:
-        if np.sum(y_true[mid_list==mid]) > 0:
-            ground_label.append(1)
-        else:
-            ground_label.append(0)
-        
-        if np.sum(y_prediction[mid_list==mid]) > 0:
-            distill_predicted_label.append(1)
-        else:
-            distill_predicted_label.append(0)
+        l = False
+        for i in y_true[mid_list==mid]:
+            if i%2 == 1:
+                l=True
+            #     ground_label.append(1)
+            # else:
+            #     ground_label.append(0)
+        ground_label.append(int(l)) 
+        l = False
+        for k in y_prediction[mid_list==mid]:
+            if k%2 == 1:
+                 l=True
+            # else:
+            #     distill_predicted_label.append(0)
+        distill_predicted_label.append(int(l))
     logger.info(f"Distill data {len(mid_list)} -> Mutants { len(mutants)}")
     distill_accuracy, distill_precision, distill_recall, distill_f1 = performance( ground_label,distill_predicted_label, average="binary")
     distill_accuracy_macro, distill_precision_macro, distill_recall_macro, distill_f1_macro = performance( ground_label, distill_predicted_label, average="macro")
@@ -172,10 +180,13 @@ def eval(args, model, device, loader):
 
             if args.loss == "CE":
                 loss =  criterion( outputs, y) 
+            elif args.loss == "both":
+                f=torch.split(feature, 600 , dim=1 )
+                loss = criterion(outputs, y) + contrastive_loss(f[0], f[1], y)
             elif args.loss == "SCL":
                 cross_loss =  criterion( outputs, y) 
-                contrastive_l = self_contrastive_loss( feature.cpu().detach().numpy(), y.cpu().detach().numpy() ) 
-                loss = (lam * contrastive_l) + (1 - lam) * (cross_loss)
+                contrastive_l = self_contrastive_loss( feature, y ) 
+                loss = contrastive_l #(lam * contrastive_l) + (1 - lam) * (cross_loss)
             else:
                 assert False, f"Wrong loss name {args.loss}"
             evalloss.update( loss.item() )         
@@ -219,16 +230,21 @@ def create_dataset(args, train_projects, dataset_list):
             data.extend( dataset )
    
     random.shuffle(data)
-    val_size = max(int(len(data)*0.3), 2)
+    y = [ d.by.item() for d in data ]
+    stat = collections.Counter(y)
+    # data = balanced_subsample(data, y)
+    # random.shuffle(data)
+    val_size = max(int(len(data)*0.2), 2)
     train_size = len(data) -val_size
     train_dataset = data[:train_size]
     valid_dataset = data[train_size : ]
    
     y = [ d.by.item() for d in train_dataset ]
     train_stat = collections.Counter(y)
+   # train_dataset = balanced_subsample(train_dataset, y)
     print(train_stat)
-    print(train_stat[0])
-    weights = [ 1./train_stat[0], 1./train_stat[1]]
+    
+    weights = [ 1./stat[0] , 1./stat[1]]
     samples_weight = np.array([ weights[d.by.item()] for d in train_dataset])
     samples_weight = torch.from_numpy(samples_weight)
     sampler = WeightedRandomSampler(samples_weight.type('torch.DoubleTensor'), len(samples_weight))
@@ -236,7 +252,9 @@ def create_dataset(args, train_projects, dataset_list):
    # train_dataset = balanced_oversample(train_dataset, y)
     loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False, sampler = sampler, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
     val_y = [ d.by.item() for d in valid_dataset ]
+   # valid_dataset = balanced_subsample(valid_dataset, val_y)
     val_stat = collections.Counter( val_y )
+    print(val_stat)
     print(len(valid_dataset))
     #print(len(test_dataset))
     loader_val = DataLoader( valid_dataset, batch_size=min(int(args.batch_size/2), len(valid_dataset)), shuffle=False, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
@@ -268,8 +286,17 @@ def projects_dict(args):
 
 import gc
 def train_one_test_many(args):
+    global criterion
+    global contrastive_loss
+    global self_contrastive_loss
+    global suploss
     set_seed(args)
     device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
+    criterion = nn.CrossEntropyLoss()
+    contrastive_loss = ContrastiveLoss()
+
+    self_contrastive_loss = SelfContrastiveLoss(device, temprature)
+    suploss = SupConLoss()
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(0)
     _, namelist = projects_dict(args)
@@ -423,7 +450,7 @@ if __name__ == "__main__":
     parser.add_argument('--emb_file', type=str, default = 'emb_100.txt', help='embedding txt path')
     parser.add_argument('--log_file', type = str, default = 'log.txt', help='log file')
     parser.add_argument('--num_class', type = int, default =2, help='num_class')
-    parser.add_argument('--seed', type = int, default =0, help='seed')
+    parser.add_argument('--seed', type = int, default =123, help='seed')
     parser.add_argument('--dropratio', type = float, default =0.25, help='drop_ratio')
     parser.add_argument('--lr', type=float, default=0.001,
                         help='learning rate (default: 0.001)')

@@ -19,7 +19,7 @@ for test_project in collections csv io lang text
 do
 for loss in CE
 do
-output_folder=results/transfer_supervised/${loss}/mutants_relevance_${num_class}_loss_${loss}_rm_${test_project}/context
+output_folder=results/transfer_supervised_killed/${loss}/mutants_relevance_${num_class}_loss_${loss}_rm_${test_project}/context
 bash run.sh gat "pretrained_models/context/gat/model_0" ${output_folder}/ attention $device $num_class $loss $test_project
 done
 done
