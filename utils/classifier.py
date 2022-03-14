@@ -31,23 +31,27 @@ class MutantPairwiseModel( nn.Module ):
 
 
 
-class PredictionLinearSimCLR( nn.Module ):
-    def __init__(self,in_dim, out_dim, encoder, dropratio=0.25):
-        super(PredictionLinearSimCLR, self).__init__()
+
+class MutantSiameseModel( nn.Module ):
+    def __init__(self,in_dim, out_dim, encoder, dropratio=0.25, type="combination"):
+        super(MutantSiameseModel, self).__init__()
         self.encoder = encoder
-        self.dense = nn.Linear(in_dim , in_dim)
-        self.relu =  nn.ReLU()
         self.dropout = nn.Dropout(dropratio)
-        self.out_proj = nn.Linear( in_dim, out_dim)
-      
+        self.out_proj = nn.Linear( in_dim*4, 1 )
+      #  self.classifier = torch.sigmoid()
+        self.type = type
+    
     def forward(self, batch):
         x_s,_,  _ = self.encoder.getVector(batch.x_s, batch.edge_index_s, batch.edge_attr_s, batch.x_s_batch, batch.ins_length_s)   
-        x = self.dropout(x_s)
-      #  x = self.dense(x)
-        x = self.relu(x)
-        out = self.out_proj(x_s)
-        return x_s, out
-    
+        x_t,_,  _ = self.encoder.getVector(batch.x_t, batch.edge_index_t, batch.edge_attr_t, batch.x_t_batch, batch.ins_length_t)  
+        if self.type == "combination":
+            x = torch.cat( ( x_s, torch.abs(x_s-x_t), torch.square(x_s-x_t), x_t ), dim=1 )
+        else:
+            x =  torch.abs(x_s-x_t)
+        x = self.out_proj(x)
+        return x
+      
+       
     def loadWholeModel(self, model_file, device, maps={} ):
         gnn_weights = torch.load(model_file,  map_location="cpu")
         self.load_state_dict(gnn_weights)
