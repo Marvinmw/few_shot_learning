@@ -367,6 +367,101 @@ def balanced_oversample(x, y):
      
     return xs      
 
+
+
+class MutantTestDataset(Dataset):
+    def __init__(self, root, dataname, project="",probability=0.6, transform=None, pre_transform=None, pre_filter=None):
+            self.root = root
+            self.dataname = dataname
+            self.project = project
+            self.probability = probability
+            super(MutantTestDataset, self).__init__(root=root, transform=transform,  pre_transform=pre_transform, pre_filter=pre_filter)
+            [ self.considered_mutants, self.change_mutant_index, self.interaction_ground ] = torch.load(self.processed_paths[0])
+            mutant_file_name, _ = self.raw_file_names
+            self.mutant_data = torch.load(os.path.join( mutant_file_name ))
+            self.data_folder = os.path.dirname( self.processed_paths[0] )
+            self.set_bank()
+            self.set_query_mutants()
+    
+    def set_bank(self):
+        self.bank = list(compress( self.mutant_data, self.change_mutant_index )) 
+    
+    def set_query_mutants(self):
+        self.query_mutants = list( compress(self.mutant_data, self.considered_mutants ) )
+        
+
+    def get(self, idx):
+        data = Data()
+        pass
+        
+    @property
+    def raw_dir(self):
+        return os.path.join(self.root)
+        
+    @property
+    def raw_paths(self):
+        r"""The filepaths to find in order to skip the download."""  
+        return self.raw_file_names[0] + self.raw_file_names[1]
+
+    @property
+    def raw_file_names(self):
+        mutant_file_name =  os.path.join( self.root , "raw", "mutants", "graph", f"{self.dataname}.pt")   
+        original_file_name =  os.path.join( self.root , "raw", "original", "graph", f"{self.dataname}.pt")   
+        return mutant_file_name, original_file_name
+    
+    @property
+    def processed_file_names(self):
+        suffix=f"{self.dataname}_{self.project}_{self.probability}_idpair"
+        return [ f'relevance/relevance_processed_{suffix}.pt']
+    
+    def download(self):
+        pass
+    
+
+    def process(self):        
+        # mutanttyper=json.load( open( os.path.join(os.path.join(self.root, "mutant_type.json")) ) )    
+        mutant_meta_file =  os.path.join( self.root , "raw", "mutants", "mutants_info_graph_ids.json")   
+        mutant_meta = json.load(open(mutant_meta_file))
+        mutant_file_name, _ = self.raw_file_names
+        mfile = mutant_file_name
+        mutant_data = torch.load(os.path.join( mfile ))
+        mutant_data_list, _ = mutant_data[0], mutant_data[1]
+        mutant_data_list = [ inverse_eage(d) for d in mutant_data_list ]
+        
+        graph_dict = {  }
+        on_change_graph = { } 
+        change_mutant_index = []
+        for k, g in enumerate(mutant_data_list):
+            if g.on_change:
+                on_change_graph[ g.mutantID ] = ( g, k )
+                change_mutant_index.append(  k  )
+            else:
+                graph_dict[ g.mutantID  ] =  ( g, k )
+        
+        considered_mutants = []
+        interaction_ground = {}
+        for mid in graph_dict:
+                (mutant_graph, mutant_graph_index ) = graph_dict[mid]
+                relevance_label = mutant_graph.label_r_binary
+                if relevance_label == -1: # not considered
+                    continue
+                
+                interacted_mid_list = mutant_meta[str(mid)]["interaction"]
+                interacted_mid_list = [ int(i) for i in interacted_mid_list]
+
+                considered_mutants.append( mutant_graph_index )
+                interaction_ground[ mid ] = interacted_mid_list
+             
+                
+        print(  os.path.dirname(self.processed_paths[0]) )
+        if not os.path.isdir( os.path.dirname(self.processed_paths[0]) ):
+           os.makedirs( os.path.dirname(self.processed_paths[0]), exist_ok=True )          
+        torch.save( [ considered_mutants, change_mutant_index, interaction_ground ], self.processed_paths[0])
+
+
+  
+
+
 class PairData(Data):
     
     def __init__(self, edge_index_s=None, x_s=None, edge_attr_s=None, ins_length_s=None, edge_index_t=None, x_t=None,  edge_attr_t=None, 
