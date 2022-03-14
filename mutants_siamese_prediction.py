@@ -79,7 +79,7 @@ def evalutaion(args, model, device, loader_val, epoch, earlystopping ):
     logger.info(f"Epoch {epoch}, Valid, Eval Loss {evalloss}"  )
     return evalloss
 
-def test_eval(args, device, loader_test):
+def test_eval(args, device, test_dataset_dict):
     #set up model
     tokenizer_word2vec = TokenIns( 
             word2vec_file=os.path.join(args.sub_token_path, args.emb_file),
@@ -106,9 +106,34 @@ def test_eval(args, device, loader_test):
     model.load_state_dict( torch.load(os.path.join(args.saved_model_path, "saved_model.pt"), map_location="cpu") )
     model.to(device)
     model.eval()
-    testloss = eval(args, model, device, loader_test)
-    logger.info(f" Test, Eval Loss {testloss}"  )
-    return testloss
+
+def prediction(testdataset, model):
+    test_loader_bank = DataLoader(testdataset.bank, batch_size=16, shuffle=False, num_workers = 2)
+    bank_mutantid = []
+    bank_feature = [ ]
+    #creat bank feature
+    for batch in test_loader_bank:
+        mid_batch = batch.MutantID
+        bank_batch = model.forwrd_once(batch)
+        bank_mutantid.append( mid_batch )
+        bank_feature.append( bank_batch )
+    bank_feature = torch.cat( bank_feature, dim=1 )
+    bank_mutantid = torch.cat( bank_mutantid, dim=1 )
+
+    #create query mutant feature
+    test_loader_query = DataLoader(testdataset.query_mutants, batch_size=16, shuffle=False, num_workers = 2)
+    query_mutantid = [ ]
+    query_feature = [ ]
+    for batch in test_loader_query:
+        mid_batch = batch.MutantID
+        query_batch = model.forwrd_once(batch)
+        query_mutantid.append( mid_batch )
+        query_feature.append( query_batch )
+
+    # query score
+   # for 
+#
+ #   return testloss
 
 def eval(args, model, device, loader):
     # y_true = []
@@ -143,6 +168,8 @@ def fecth_datalist(args, projects):
         dataset_list[p] = dataset_inmemory
     return dataset_list
 
+
+
 def create_dataset(args, train_projects, dataset_list):
     train_dataset = [ ]
     valid_dataset = [ ]
@@ -158,15 +185,13 @@ def create_dataset(args, train_projects, dataset_list):
     data = random.sample(data, int(len(data) * args.data_ratio))
     #data = balanced_subsample(data, y)
     y = [ d.by.item() for d in data ]
-    test_size = int(len(data)*0.3)
+    test_size = int(len(data)*0.5)
     val_size = int((len(data)-test_size)*0.3)
     train_size = len(data) - test_size -val_size
     train_dataset = data[:train_size]
     valid_dataset = data[train_size : train_size+ val_size]
     test_dataset=data[  train_size+ val_size: ]
             
-    y = [ d.by.item() for d in train_dataset ]
-    train_stat = collections.Counter(y)
     y = [ d.by.item() for d in train_dataset ]
     train_stat = collections.Counter(y)
     weights = [ 1/train_stat[0], 1/train_stat[1]]
@@ -180,11 +205,9 @@ def create_dataset(args, train_projects, dataset_list):
     print(len(valid_dataset))
     print(len(test_dataset))
     loader_val = DataLoader( valid_dataset, batch_size=min(int(args.batch_size/2), len(valid_dataset)), shuffle=False, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
-    loader_test = DataLoader( test_dataset, batch_size=min(int(args.batch_size/2),len(test_dataset)), shuffle=False, num_workers = args.num_workers,follow_batch=['x_s', 'x_t']  )
-    test_y = [ d.by.item() for d in test_dataset ]
-    test_stat = collections.Counter( test_y )
 
-    return loader, loader_val, loader_test, train_projects, {"train":train_stat, "val":val_stat, "test":test_stat}
+
+    return loader, loader_val, train_projects, {"train":train_stat, "val":val_stat}
 
 
 def projects_dict(args):
@@ -205,7 +228,7 @@ def projects_dict(args):
 
 
 
-def train_mode(args):
+def train_mode(args, train_projects):
     global criterion
     os.makedirs( args.saved_model_path, exist_ok=True)
     set_seed(args)
@@ -214,14 +237,8 @@ def train_mode(args):
         torch.cuda.manual_seed_all(0)
     
     criterion = nn.BCEWithLogitsLoss()  
-    projects, namelist = projects_dict(args)
-    train_projects = []
-    klist = list( projects.keys() )
-    for pp in klist:
-        train_projects.extend(projects[pp])
     orgsavedpat=args.saved_model_path
-
-    dataset_list = fecth_datalist(args, namelist)
+    dataset_list = fecth_datalist(args, train_projects)
 
     args.saved_model_path = f"{orgsavedpat}"
     if not os.path.isdir(args.saved_model_path):
@@ -229,7 +246,7 @@ def train_mode(args):
     logger.info(args.saved_model_path)
     
 
-    loader, loader_val,  loader_test, train_projects, stat = create_dataset(args, train_projects, dataset_list)
+    loader, loader_val, train_projects, stat = create_dataset(args, train_projects, dataset_list)
     json.dump(train_projects, open(os.path.join(args.saved_model_path, "train_projects.json"), "w")  )
     json.dump(stat, open(os.path.join(args.saved_model_path, "stat.json"), "w")  , indent=6)
     num_class = args.num_class
@@ -281,9 +298,36 @@ def train_mode(args):
         evalloss = evalutaion(args, model, device, loader_val, epoch, earlystopping)
         val_res[str(epoch)] = [ trainloss, evalloss]
     json.dump( val_res, open(os.path.join(args.saved_model_path, "epoch.json"), "w") )    
-    testloss = test_eval(args, device, loader_test)
-    json.dump( [testloss ], open(os.path.join(args.saved_model_path, "test.json"), "w") )
+   
 
+import gc
+def train_one_test_many(args):
+    global criterion
+    global contrastive_loss
+    global self_contrastive_loss
+    global suploss
+    set_seed(args)
+    device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
+   
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(0)
+    _, namelist = projects_dict(args)
+    dataset_list = fecth_datalist(args, namelist)
+    orginalsavepath = args.saved_model_path
+    for k in range(len(namelist)):
+        train_on_projects = [ namelist[k] ]
+        test_on_projects = [  ]
+        for j in range(len(namelist)):
+            if j != k:
+                test_on_projects.append( namelist[j] )
+        args.saved_model_path = f"{orginalsavepath}/{train_on_projects[0]}_fold/"
+        try:
+            train_mode(args, train_on_projects )
+        except Exception as e:
+            logger.info(e)
+        gc.collect()
+        torch.cuda.empty_cache()  
+    
 
 if __name__ == "__main__":
      # Training settings
@@ -349,15 +393,14 @@ if __name__ == "__main__":
     with open(args.saved_model_path+'/commandline_args.txt', 'w') as f:
         json.dump(args.__dict__, f, indent=2)
 
-    if len(args.remove_projects) != 0:
-        usedp=[]
-        for p in args.projects:
-            if p not in args.remove_projects:
-                usedp.append( p  )
-        args.projects = usedp
-    assert len(args.projects) == 4
+    args = parser.parse_args( )
+    with open(args.saved_model_path+'/commandline_args.txt', 'w') as f:
+        json.dump(args.__dict__, f, indent=2)
+
+   
+    assert len(args.projects) == 1
     logger = get_logger(os.path.join(args.saved_model_path, "log.txt"))
     logger.info('start training!')
-    train_mode(args)
+    train_one_test_many(args)
     logger.info('finishing training!')
 

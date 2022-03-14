@@ -50,7 +50,20 @@ class MutantSiameseModel( nn.Module ):
             x =  torch.abs(x_s-x_t)
         x = self.out_proj(x)
         return x
-      
+
+    def forward_once(self, batch):
+        x,_,  _ = self.encoder.getVector(batch.x, batch.edge_index, batch.edge_attr, batch.x_batch, batch.ins_length)
+        return x
+    
+    def score(self, f1, f2):
+        if self.type == "combination":
+            x = torch.cat( ( f1, torch.abs(1-f2), torch.square(f1-f2), f2 ), dim=1 )
+        else:
+            x =  torch.abs(f1 - f2)
+        score = torch.sigmoid(self.out_proj(x))
+        return score
+        
+
        
     def loadWholeModel(self, model_file, device, maps={} ):
         gnn_weights = torch.load(model_file,  map_location="cpu")

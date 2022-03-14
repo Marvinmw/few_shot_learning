@@ -386,6 +386,10 @@ class MutantTestDataset(Dataset):
     def set_bank(self):
         self.bank = list(compress( self.mutant_data, self.change_mutant_index )) 
     
+    def prepare_fine_tune(self):
+
+        pass
+
     def set_query_mutants(self):
         self.query_mutants = list( compress(self.mutant_data, self.considered_mutants ) )
         
@@ -412,7 +416,7 @@ class MutantTestDataset(Dataset):
     @property
     def processed_file_names(self):
         suffix=f"{self.dataname}_{self.project}_{self.probability}_idpair"
-        return [ f'relevance/relevance_processed_{suffix}.pt']
+        return [ f'relevance/relevance_processed_{suffix}.pt', f'relevance/relevance_processed_{suffix}_finetune.index']
     
     def download(self):
         pass
@@ -438,8 +442,8 @@ class MutantTestDataset(Dataset):
             else:
                 graph_dict[ g.mutantID  ] =  ( g, k )
         
-        considered_mutants = []
-        interaction_ground = {}
+        considered_mutants_index = []
+        interaction_index = {}
         for mid in graph_dict:
                 (mutant_graph, mutant_graph_index ) = graph_dict[mid]
                 relevance_label = mutant_graph.label_r_binary
@@ -447,16 +451,26 @@ class MutantTestDataset(Dataset):
                     continue
                 
                 interacted_mid_list = mutant_meta[str(mid)]["interaction"]
-                interacted_mid_list = [ int(i) for i in interacted_mid_list]
+                interacted_mid_index_list = [ on_change_graph[int(i)][1] for i in interacted_mid_list]
 
-                considered_mutants.append( mutant_graph_index )
-                interaction_ground[ mid ] = interacted_mid_list
+                considered_mutants_index.append( mutant_graph_index )
+                interaction_index[ mutant_graph_index ] = interacted_mid_index_list
              
                 
-        print(  os.path.dirname(self.processed_paths[0]) )
+        #print(  os.path.dirname(self.processed_paths[0]) )
         if not os.path.isdir( os.path.dirname(self.processed_paths[0]) ):
            os.makedirs( os.path.dirname(self.processed_paths[0]), exist_ok=True )          
-        torch.save( [ considered_mutants, change_mutant_index, interaction_ground ], self.processed_paths[0])
+        torch.save( [ considered_mutants_index, change_mutant_index, interaction_index ], self.processed_paths[0])
+        #pos_index = [ ]
+        #neg_index = [ ]
+        #for k in interaction_index:
+        #    if len(interaction_index[k]) > 0:
+        #        pos_index.append( k )
+        #    else:
+        #        neg_index.append( k )
+        #random.shuffle( k_list )
+
+        
 
 
   
