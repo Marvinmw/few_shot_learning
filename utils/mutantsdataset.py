@@ -388,14 +388,14 @@ class MutantTestRelevanceDataset(Dataset):
             self.set_query_mutants()
     
     def set_bank(self):
-        self.bank = list(compress( self.mutant_data_list, self.change_mutant_index )) 
+        self.bank = [ self.mutant_data_list[i] for i in self.change_mutant_index ]
     
     def prepare_fine_tune(self):
 
         pass
 
     def set_query_mutants(self):
-        self.query_mutants = list( compress(self.mutant_data_list, self.considered_mutants ) )
+        self.query_mutants = [ self.mutant_data_list[i] for i in self.considered_mutants ] #list( compress(self.mutant_data_list, self.considered_mutants ) )
         
     def set_data(self,key):
         if key == "bank":
@@ -462,6 +462,7 @@ class MutantTestRelevanceDataset(Dataset):
                 (mutant_graph, mutant_graph_index ) = graph_dict[mid]
                 relevance_label = mutant_graph.label_r_binary
                 if relevance_label == -1: # not considered
+                   # print("not consider")
                     continue
                 
                 interacted_mid_list = mutant_meta[str(mid)]["interaction"]

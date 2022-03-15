@@ -105,7 +105,7 @@ def test_eval(args, device,test_on_projects, test_dataset_dict):
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info(f"Trainable Parameters Model {pytorch_total_params}\n")
     f=os.path.join(args.saved_model_path, "saved_model.pt")
-    assert os.path.isfile( os.path.join(args.saved_model_path, "saved_model.pt") ), f"Fine tune weights file path is wrong {f}"
+    assert os.path.isfile( os.path.join(args.saved_model_path, "saved_model.pt") ), f"Fine tune weights file path is wrong {str(f)}"
     model.load_state_dict( torch.load(os.path.join(args.saved_model_path, "saved_model.pt"), map_location="cpu") )
     model.to(device)
     model.eval()
@@ -127,9 +127,9 @@ def prediction_similarity(testdataset, device, model):
         bank_batch = model.forward_once(batch)
         bank_mutantid.append( mid_batch )
         bank_feature.append( bank_batch )
-    bank_feature = torch.cat( bank_feature, dim=1 )
-    print(bank_mutantid)
-    bank_mutantid = torch.cat( bank_mutantid, dim=1 ) # M X D
+    bank_feature = torch.cat( bank_feature, dim=0 )
+    #print(bank_mutantid)
+    bank_mutantid = torch.cat( bank_mutantid, dim=0 ) # M X D
 
     #create query mutant feature
     testdataset.set_data("query")
@@ -141,32 +141,43 @@ def prediction_similarity(testdataset, device, model):
         batch = batch.to(device)
         mid_batch = batch.mutantID
         query_batch = model.forward_once(batch)
-        ground_truth.append( batch.by )
+        ground_truth.append( batch.label_r_binary )
         query_mutantid.append( mid_batch )
         query_feature.append( query_batch )
     
-    query_feature = torch.cat( query_feature, dim=1 )
-    query_mutantid = torch.cat( query_mutantid, dim=1 ) # N X D
-    ground_truth = torch.cat(ground_truth, dim=1).view(-1)
+  #  print(query_feature[0].shape)
+    query_feature = torch.cat( query_feature, dim=0 )
+    query_mutantid = torch.cat( query_mutantid, dim=0 ) # N X D
+    ground_truth = torch.cat(ground_truth, dim=0)
     N = query_feature.shape[0]
     
   
     scores_list = []
     # query score
+    # print(bank_feature.shape)
+    # print(query_feature.shape)
     for reference in bank_feature:
-        repeated = reference.repeat(N)
+        reference = reference.view(1, -1)
+        #print(reference.shape)
+        repeated = reference.repeat(N, 1)
+        #print(repeated.shape)
         similarity = model.score( query_feature, repeated )
         scores_list.append( similarity )
     
     # roc_auc_score
-    scorematrix = torch.cat( scores_list, dim=1 ).view(-1)
-    max_score = torch.max( scorematrix, 0 ).cpu().detach().numpy()
-    ground_truth_np = ground_truth.cpu().detach().numpy().float()
+    # print(scores_list[0].shape)
+    scorematrix = torch.cat( scores_list, dim=1 )
+    # print(scorematrix.shape)
+    max_score = torch.max( scorematrix, 1 ).values.cpu().detach().numpy()
+    ground_truth_np = ground_truth.cpu().detach().numpy().astype(np.float)
+    # print(ground_truth_np.shape)
+    # print(max_score.shape)
+    # print(ground_truth_np)
     score = roc_auc_score( ground_truth_np, max_score  )
 
     # th = 0.5
-    predicted_label = threshold_sigmoid( max_score )
-    acc, pre, re, f = performance(ground_truth_np, predicted_label, average="binary")
+    predicted_label = threshold_sigmoid( max_score ).astype(np.int)
+    acc, pre, re, f = performance(ground_truth_np.astype(np.int), predicted_label, average="binary")
 
     # top k performance
     from utils.metrics import mean_reciprocal_ranks, average_precision, precision_at_k
@@ -178,9 +189,15 @@ def prediction_similarity(testdataset, device, model):
     top_k = [ 1, 5, 10, 20]
     precision_top_k = []
     for k in top_k:
+        if ground_truth_np.size < k:
+            break
+        #print( precision_at_k( ground_truth_np, max_score, k  ) )
         precision_top_k.append( precision_at_k( ground_truth_np, max_score, k  ) )
     
-    logger.info( f" mean_reciprocal_ranks {mrr}, mean_avg_precision {map}, precision@k {top_k}, { precision_top_k }" )
+    logger.info( f"{testdataset.project},roc_auc_score {score} mean_reciprocal_ranks {mrr}, mean_avg_precision {map}, precision@k, { precision_top_k }, predciton {acc, pre, re, f }" )
+    if "lang_25" == testdataset.project:
+        logger.info( f"range {np.max(max_score), np.min(max_score)}" )
+
     res = {"mrr":mrr, "map":map, "precision@k":precision_top_k, "roc_auc_score": score, "classification":[ acc, pre, re, f] }
     return res
 
@@ -189,9 +206,9 @@ def prediction_similarity(testdataset, device, model):
 
 
 def threshold_sigmoid(similarity, th=0.5):
-    threashold = similarity.clone()
-    threashold.data.fill_(th)
-    return ( similarity > threashold ).float().view(-1, 1)
+    threashold = np.zeros_like( similarity )
+    threashold.fill(th)
+    return ( similarity > threashold ).reshape(-1, 1)
 
     #return testloss
 def top_k_performance(self, top_k):
@@ -394,7 +411,7 @@ def train_one_test_many(args):
                     test_on_projects.append( namelist[j] )
             args.saved_model_path = f"{orginalsavepath}/{train_on_projects[0]}_fold/"
             try:
-                logger.info("fine tune")
+                logger.info(f"fine tune {train_on_projects}")
                 train_mode(args, train_on_projects )
             except Exception as e:
                 logger.info(e)
