@@ -11,6 +11,9 @@ from .tools import  inverse_eage
 import numpy as np
 
 
+import torch
+from torch_geometric.data import Dataset
+
 class MutantKilledDataset(InMemoryDataset):
     def __init__(self, root, dataname, project="", transform=None, pre_transform=None, pre_filter=None):
         self.root = root
@@ -377,26 +380,38 @@ class MutantTestRelevanceDataset(Dataset):
             super(MutantTestRelevanceDataset, self).__init__(root=root, transform=transform,  pre_transform=pre_transform, pre_filter=pre_filter)
             [ self.considered_mutants, self.change_mutant_index, self.interaction_ground ] = torch.load(self.processed_paths[0])
             mutant_file_name, _ = self.raw_file_names
-            self.mutant_data = torch.load(os.path.join( mutant_file_name ))
+            mutant_data = torch.load(os.path.join( mutant_file_name ))
+            mutant_data_list, _ = mutant_data[0], mutant_data[1]
+            self.mutant_data_list = [ inverse_eage(d) for d in mutant_data_list ]
             self.data_folder = os.path.dirname( self.processed_paths[0] )
             self.set_bank()
             self.set_query_mutants()
     
     def set_bank(self):
-        self.bank = list(compress( self.mutant_data, self.change_mutant_index )) 
+        self.bank = list(compress( self.mutant_data_list, self.change_mutant_index )) 
     
     def prepare_fine_tune(self):
 
         pass
 
     def set_query_mutants(self):
-        self.query_mutants = list( compress(self.mutant_data, self.considered_mutants ) )
+        self.query_mutants = list( compress(self.mutant_data_list, self.considered_mutants ) )
         
+    def set_data(self,key):
+        if key == "bank":
+            self.data = self.bank
+        elif key == "query":
+            self.data = self.query_mutants
+        else:
+            assert False, f"key error {key}"
 
     def get(self, idx):
-        data = Data()
-        pass
-        
+        data = self.data[idx]
+        return data
+
+    def len(self):
+        return len(self.data)
+
     @property
     def raw_dir(self):
         return os.path.join(self.root)
@@ -414,8 +429,8 @@ class MutantTestRelevanceDataset(Dataset):
     
     @property
     def processed_file_names(self):
-        suffix=f"{self.dataname}_{self.project}_{self.probability}_idpair"
-        return [ f'relevance/relevance_processed_{suffix}.pt', f'relevance/relevance_processed_{suffix}_finetune.index']
+        suffix=f"{self.dataname}_{self.project}_idpair"
+        return [ f'relevance/relevance_processed_{suffix}.pt']
     
     def download(self):
         pass
@@ -507,8 +522,6 @@ class PairData(Data):
 
       
 
-import torch
-from torch_geometric.data import Dataset
 
 
 class PosNegPairDataset(Dataset):

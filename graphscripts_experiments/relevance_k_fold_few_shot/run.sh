@@ -5,9 +5,8 @@ output_prefix=$3
 gp=$4
 device=$5
 num_class=$6
-loss=$7
-train_project=$8
-load_model=$9
+train_project=$7
+load_model=$8
 dropratio=0.1
 cd ../../
 
@@ -33,10 +32,10 @@ python mutants_siamese_prediction.py --batch_size 256 --num_workers 5  --epochs 
 --lr 0.001 \
 --dropratio $dropratio \
 --warmup_schedule no \
---loss $loss \
 --saved_transfer_model_file $load_model \
 --task relevance \
 --lazy no \
+--fine_tune no \
 --projects $train_project
 
 

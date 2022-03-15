@@ -52,7 +52,7 @@ class MutantSiameseModel( nn.Module ):
         return x
 
     def forward_once(self, batch):
-        x,_,  _ = self.encoder.getVector(batch.x, batch.edge_index, batch.edge_attr, batch.x_batch, batch.ins_length)
+        x,_,  _ = self.encoder.getVector(batch.x, batch.edge_index, batch.edge_attr, batch.batch, batch.ins_length)
         return x
     
     def score(self, f1, f2):

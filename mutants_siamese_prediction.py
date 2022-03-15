@@ -112,30 +112,35 @@ def test_eval(args, device,test_on_projects, test_dataset_dict):
     sum_res = {}
     for test_p in test_dataset_dict:
         if test_p in test_on_projects:
-            sum_res[test_p] = prediction_similarity( test_dataset_dict[test_p], model )
+            sum_res[test_p] = prediction_similarity( test_dataset_dict[test_p], device,model )
     return sum_res
 
-def prediction_similarity(testdataset, model):
-    test_loader_bank = DataLoader(testdataset.bank, batch_size=16, shuffle=False, num_workers = 2)
+def prediction_similarity(testdataset, device, model):
+    testdataset.set_data("bank")
+    test_loader_bank = DataLoader(testdataset, batch_size=16, shuffle=False, num_workers = 2,  exclude_keys=["interaction_mid", "node_type", "label_r_mul"])
     bank_mutantid = []
     bank_feature = [ ]
     #creat bank feature
     for batch in test_loader_bank:
-        mid_batch = batch.MutantID
-        bank_batch = model.forwrd_once(batch)
+        batch = batch.to(device)
+        mid_batch = batch.mutantID
+        bank_batch = model.forward_once(batch)
         bank_mutantid.append( mid_batch )
         bank_feature.append( bank_batch )
     bank_feature = torch.cat( bank_feature, dim=1 )
+    print(bank_mutantid)
     bank_mutantid = torch.cat( bank_mutantid, dim=1 ) # M X D
 
     #create query mutant feature
-    test_loader_query = DataLoader(testdataset.query_mutants, batch_size=16, shuffle=False, num_workers = 2)
+    testdataset.set_data("query")
+    test_loader_query = DataLoader(testdataset, batch_size=16, shuffle=False, num_workers = 2, exclude_keys=["interaction_mid", "node_type", "label_r_mul"])
     query_mutantid = [ ]
     query_feature = [ ]
     ground_truth = []
     for batch in test_loader_query:
-        mid_batch = batch.MutantID
-        query_batch = model.forwrd_once(batch)
+        batch = batch.to(device)
+        mid_batch = batch.mutantID
+        query_batch = model.forward_once(batch)
         ground_truth.append( batch.by )
         query_mutantid.append( mid_batch )
         query_feature.append( query_batch )
@@ -378,9 +383,9 @@ def train_one_test_many(args):
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(0)
     _, namelist = projects_dict(args)
-    test_dataset_dict = fetch_testdata( namelist )
+    test_dataset_dict = fetch_testdata(args, namelist )
     orginalsavepath = args.saved_model_path
-    if args.fine_tune:
+    if args.fine_tune == "yes":
         for k in range(len(namelist)):
             train_on_projects = [ namelist[k] ]
             test_on_projects = [  ]
@@ -389,15 +394,19 @@ def train_one_test_many(args):
                     test_on_projects.append( namelist[j] )
             args.saved_model_path = f"{orginalsavepath}/{train_on_projects[0]}_fold/"
             try:
+                logger.info("fine tune")
                 train_mode(args, train_on_projects )
             except Exception as e:
                 logger.info(e)
             # run test
+            logger.info("prediction")
             sum_res = test_eval(args, device, test_on_projects, test_dataset_dict)
             gc.collect()
             torch.cuda.empty_cache()  
     else:
-       sum_res = test_eval(args, device, test_dataset_dict)
+        logger.info("prediction")
+        args.saved_model_path =  os.path.dirname( args.saved_transfer_model_file )
+        sum_res = test_eval(args, device, namelist, test_dataset_dict)
     
 
 if __name__ == "__main__":
@@ -456,9 +465,11 @@ if __name__ == "__main__":
     parser.add_argument('--lazy', type=str, default="no",
                         help='save model')
     parser.add_argument("--projects", nargs="+", default=["collections"])
-    parser.add_argument("--remove_projects", nargs="+", default=[])
+
    # parser.add_argument("--loss", type=str, default="CE", help='[both, CL, CE, SCL]')
     parser.add_argument("--data_ratio", type=float, default=1.0, help='used dataset set size')
+    parser.add_argument("--fine_tune",  type=str, default="no",
+                        help='[yes, no]')
 
     args = parser.parse_args( )
     with open(args.saved_model_path+'/commandline_args.txt', 'w') as f:
@@ -471,7 +482,7 @@ if __name__ == "__main__":
    
     assert len(args.projects) == 1
     logger = get_logger(os.path.join(args.saved_model_path, "log.txt"))
-    logger.info('start training!')
+
     train_one_test_many(args)
-    logger.info('finishing training!')
+
 
