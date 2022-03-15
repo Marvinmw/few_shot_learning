@@ -369,13 +369,12 @@ def balanced_oversample(x, y):
 
 
 
-class MutantTestDataset(Dataset):
-    def __init__(self, root, dataname, project="",probability=0.6, transform=None, pre_transform=None, pre_filter=None):
+class MutantTestRelevanceDataset(Dataset):
+    def __init__(self, root, dataname, project="", transform=None, pre_transform=None, pre_filter=None):
             self.root = root
             self.dataname = dataname
             self.project = project
-            self.probability = probability
-            super(MutantTestDataset, self).__init__(root=root, transform=transform,  pre_transform=pre_transform, pre_filter=pre_filter)
+            super(MutantTestRelevanceDataset, self).__init__(root=root, transform=transform,  pre_transform=pre_transform, pre_filter=pre_filter)
             [ self.considered_mutants, self.change_mutant_index, self.interaction_ground ] = torch.load(self.processed_paths[0])
             mutant_file_name, _ = self.raw_file_names
             self.mutant_data = torch.load(os.path.join( mutant_file_name ))

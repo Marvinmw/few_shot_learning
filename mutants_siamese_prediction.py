@@ -2,7 +2,7 @@ from pydoc import describe
 import sys
 # setting path
 sys.path.append('../')
-from utils.mutantsdataset import MutantKilledDataset, MutantRelevanceDataset, MutantTestDataset
+from utils.mutantsdataset import MutantKilledDataset, MutantRelevanceDataset, MutantTestRelevanceDataset
 import argparse
 import json
 from torch_geometric.data import DataLoader
@@ -19,6 +19,7 @@ from utils.AverageMeter import AverageMeter
 from utils.classifier import MutantSiameseModel
 import collections
 from torch.utils.data import WeightedRandomSampler
+from sklearn.metrics import roc_auc_score
 import random
 try:
     from transformers import get_linear_schedule_with_warmup as linear_schedule
@@ -79,7 +80,7 @@ def evalutaion(args, model, device, loader_val, epoch, earlystopping ):
     logger.info(f"Epoch {epoch}, Valid, Eval Loss {evalloss}"  )
     return evalloss
 
-def test_eval(args, device, test_dataset_dict):
+def test_eval(args, device,test_on_projects, test_dataset_dict):
     #set up model
     tokenizer_word2vec = TokenIns( 
             word2vec_file=os.path.join(args.sub_token_path, args.emb_file),
@@ -103,11 +104,18 @@ def test_eval(args, device, test_dataset_dict):
     model = MutantSiameseModel(600, args.num_class, encoder, args.dropratio)
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info(f"Trainable Parameters Model {pytorch_total_params}\n")
+    f=os.path.join(args.saved_model_path, "saved_model.pt")
+    assert os.path.isfile( os.path.join(args.saved_model_path, "saved_model.pt") ), f"Fine tune weights file path is wrong {f}"
     model.load_state_dict( torch.load(os.path.join(args.saved_model_path, "saved_model.pt"), map_location="cpu") )
     model.to(device)
     model.eval()
+    sum_res = {}
+    for test_p in test_dataset_dict:
+        if test_p in test_on_projects:
+            sum_res[test_p] = prediction_similarity( test_dataset_dict[test_p], model )
+    return sum_res
 
-def prediction(testdataset, model):
+def prediction_similarity(testdataset, model):
     test_loader_bank = DataLoader(testdataset.bank, batch_size=16, shuffle=False, num_workers = 2)
     bank_mutantid = []
     bank_feature = [ ]
@@ -118,22 +126,71 @@ def prediction(testdataset, model):
         bank_mutantid.append( mid_batch )
         bank_feature.append( bank_batch )
     bank_feature = torch.cat( bank_feature, dim=1 )
-    bank_mutantid = torch.cat( bank_mutantid, dim=1 )
+    bank_mutantid = torch.cat( bank_mutantid, dim=1 ) # M X D
 
     #create query mutant feature
     test_loader_query = DataLoader(testdataset.query_mutants, batch_size=16, shuffle=False, num_workers = 2)
     query_mutantid = [ ]
     query_feature = [ ]
+    ground_truth = []
     for batch in test_loader_query:
         mid_batch = batch.MutantID
         query_batch = model.forwrd_once(batch)
+        ground_truth.append( batch.by )
         query_mutantid.append( mid_batch )
         query_feature.append( query_batch )
-
+    
+    query_feature = torch.cat( query_feature, dim=1 )
+    query_mutantid = torch.cat( query_mutantid, dim=1 ) # N X D
+    ground_truth = torch.cat(ground_truth, dim=1).view(-1)
+    N = query_feature.shape[0]
+    
+  
+    scores_list = []
     # query score
-   # for 
-#
- #   return testloss
+    for reference in bank_feature:
+        repeated = reference.repeat(N)
+        similarity = model.score( query_feature, repeated )
+        scores_list.append( similarity )
+    
+    # roc_auc_score
+    scorematrix = torch.cat( scores_list, dim=1 ).view(-1)
+    max_score = torch.max( scorematrix, 0 ).cpu().detach().numpy()
+    ground_truth_np = ground_truth.cpu().detach().numpy().float()
+    score = roc_auc_score( ground_truth_np, max_score  )
+
+    # th = 0.5
+    predicted_label = threshold_sigmoid( max_score )
+    acc, pre, re, f = performance(ground_truth_np, predicted_label, average="binary")
+
+    # top k performance
+    from utils.metrics import mean_reciprocal_ranks, average_precision, precision_at_k
+
+    mrr = mean_reciprocal_ranks( ground_truth_np, max_score )
+    map = average_precision( ground_truth_np, max_score )
+    
+    # top k AP
+    top_k = [ 1, 5, 10, 20]
+    precision_top_k = []
+    for k in top_k:
+        precision_top_k.append( precision_at_k( ground_truth_np, max_score, k  ) )
+    
+    logger.info( f" mean_reciprocal_ranks {mrr}, mean_avg_precision {map}, precision@k {top_k}, { precision_top_k }" )
+    res = {"mrr":mrr, "map":map, "precision@k":precision_top_k, "roc_auc_score": score, "classification":[ acc, pre, re, f] }
+    return res
+
+        
+    
+
+
+def threshold_sigmoid(similarity, th=0.5):
+    threashold = similarity.clone()
+    threashold.data.fill_(th)
+    return ( similarity > threashold ).float().view(-1, 1)
+
+    #return testloss
+def top_k_performance(self, top_k):
+    pass
 
 def eval(args, model, device, loader):
     # y_true = []
@@ -147,8 +204,6 @@ def eval(args, model, device, loader):
                 y = batch.by
             else:
                 y = batch.my
-           # print(y.shape)
-           # print(outputs.shape)
             loss =  criterion( outputs, y.float().view(-1, 1)) 
            
             evalloss.update( loss.item() )         
@@ -168,6 +223,17 @@ def fecth_datalist(args, projects):
         dataset_list[p] = dataset_inmemory
     return dataset_list
 
+def fetch_testdata(args, projects):
+    dataset_list = {}
+    for s, p in enumerate(tqdm(projects, desc="Iteration")):
+        if args.task == "killed":
+            dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
+        elif args.task == "relevance":
+            dataset_inmemory = MutantTestRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
+        else:
+            assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
+        dataset_list[p] = dataset_inmemory
+    return dataset_list
 
 
 def create_dataset(args, train_projects, dataset_list):
@@ -312,21 +378,26 @@ def train_one_test_many(args):
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(0)
     _, namelist = projects_dict(args)
-    dataset_list = fecth_datalist(args, namelist)
+    test_dataset_dict = fetch_testdata( namelist )
     orginalsavepath = args.saved_model_path
-    for k in range(len(namelist)):
-        train_on_projects = [ namelist[k] ]
-        test_on_projects = [  ]
-        for j in range(len(namelist)):
-            if j != k:
-                test_on_projects.append( namelist[j] )
-        args.saved_model_path = f"{orginalsavepath}/{train_on_projects[0]}_fold/"
-        try:
-            train_mode(args, train_on_projects )
-        except Exception as e:
-            logger.info(e)
-        gc.collect()
-        torch.cuda.empty_cache()  
+    if args.fine_tune:
+        for k in range(len(namelist)):
+            train_on_projects = [ namelist[k] ]
+            test_on_projects = [  ]
+            for j in range(len(namelist)):
+                if j != k:
+                    test_on_projects.append( namelist[j] )
+            args.saved_model_path = f"{orginalsavepath}/{train_on_projects[0]}_fold/"
+            try:
+                train_mode(args, train_on_projects )
+            except Exception as e:
+                logger.info(e)
+            # run test
+            sum_res = test_eval(args, device, test_on_projects, test_dataset_dict)
+            gc.collect()
+            torch.cuda.empty_cache()  
+    else:
+       sum_res = test_eval(args, device, test_dataset_dict)
     
 
 if __name__ == "__main__":
