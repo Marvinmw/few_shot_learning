@@ -19,7 +19,8 @@ from utils.AverageMeter import AverageMeter
 from utils.classifier import MutantSiameseModel
 import collections
 from torch.utils.data import WeightedRandomSampler
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
+from utils.ranking import ranking_performance
 import random
 try:
     from transformers import get_linear_schedule_with_warmup as linear_schedule
@@ -112,7 +113,11 @@ def test_eval(args, device,test_on_projects, test_dataset_dict):
     sum_res = {}
     for test_p in test_dataset_dict:
         if test_p in test_on_projects:
-            sum_res[test_p] = prediction_similarity( test_dataset_dict[test_p], device,model )
+            try:
+                sum_res[test_p] = prediction_similarity( test_dataset_dict[test_p], device,model )
+            except Exception as e:
+                logger.info( test_p )
+                logger.info( e )
     return sum_res
 
 def prediction_similarity(testdataset, device, model):
@@ -154,8 +159,6 @@ def prediction_similarity(testdataset, device, model):
   
     scores_list = []
     # query score
-    # print(bank_feature.shape)
-    # print(query_feature.shape)
     for reference in bank_feature:
         reference = reference.view(1, -1)
         #print(reference.shape)
@@ -168,51 +171,16 @@ def prediction_similarity(testdataset, device, model):
     # print(scores_list[0].shape)
     scorematrix = torch.cat( scores_list, dim=1 )
     # print(scorematrix.shape)
-    max_score = torch.max( scorematrix, 1 ).values.cpu().detach().numpy()
+    max_score = torch.mean( scorematrix, 1 ).cpu().detach().numpy()
     ground_truth_np = ground_truth.cpu().detach().numpy().astype(np.float)
     # print(ground_truth_np.shape)
     # print(max_score.shape)
     # print(ground_truth_np)
-    score = roc_auc_score( ground_truth_np, max_score  )
-
-    # th = 0.5
-    predicted_label = threshold_sigmoid( max_score ).astype(np.int)
-    acc, pre, re, f = performance(ground_truth_np.astype(np.int), predicted_label, average="binary")
-
-    # top k performance
-    from utils.metrics import mean_reciprocal_ranks, average_precision, precision_at_k
-
-    mrr = mean_reciprocal_ranks( ground_truth_np, max_score )
-    map = average_precision( ground_truth_np, max_score )
-    
-    # top k AP
-    top_k = [ 1, 5, 10, 20]
-    precision_top_k = []
-    for k in top_k:
-        if ground_truth_np.size < k:
-            break
-        #print( precision_at_k( ground_truth_np, max_score, k  ) )
-        precision_top_k.append( precision_at_k( ground_truth_np, max_score, k  ) )
-    
-    logger.info( f"{testdataset.project},roc_auc_score {score} mean_reciprocal_ranks {mrr}, mean_avg_precision {map}, precision@k, { precision_top_k }, predciton {acc, pre, re, f }" )
-    if "lang_25" == testdataset.project:
-        logger.info( f"range {np.max(max_score), np.min(max_score)}" )
-
-    res = {"mrr":mrr, "map":map, "precision@k":precision_top_k, "roc_auc_score": score, "classification":[ acc, pre, re, f] }
+    res = ranking_performance(ground_truth_np, max_score)
+    logger.info(f"{testdataset.project} , {res}")
     return res
 
         
-    
-
-
-def threshold_sigmoid(similarity, th=0.5):
-    threashold = np.zeros_like( similarity )
-    threashold.fill(th)
-    return ( similarity > threashold ).reshape(-1, 1)
-
-    #return testloss
-def top_k_performance(self, top_k):
-    pass
 
 def eval(args, model, device, loader):
     # y_true = []
@@ -413,17 +381,19 @@ def train_one_test_many(args):
             try:
                 logger.info(f"fine tune {train_on_projects}")
                 train_mode(args, train_on_projects )
+                # run test
+                logger.info("prediction")
+                sum_res = test_eval(args, device, test_on_projects, test_dataset_dict)
+                json.dump( sum_res, open(os.path.join(args.saved_model_path, "few_shot_test.json"), "w") ) 
             except Exception as e:
-                logger.info(e)
-            # run test
-            logger.info("prediction")
-            sum_res = test_eval(args, device, test_on_projects, test_dataset_dict)
+                logger.info(e)     
             gc.collect()
             torch.cuda.empty_cache()  
     else:
         logger.info("prediction")
         args.saved_model_path =  os.path.dirname( args.saved_transfer_model_file )
         sum_res = test_eval(args, device, namelist, test_dataset_dict)
+        json.dump( sum_res, open(os.path.join(args.saved_model_path, "few_shot_test.json"), "w") ) 
     
 
 if __name__ == "__main__":
