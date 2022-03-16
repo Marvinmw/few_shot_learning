@@ -57,7 +57,7 @@ class MutantSiameseModel( nn.Module ):
     
     def score(self, f1, f2):
         if self.type == "combination":
-            x = torch.cat( ( f1, torch.abs(1-f2), torch.square(f1-f2), f2 ), dim=1 )
+            x = torch.cat( ( f1, torch.abs(f1-f2), torch.square(f1-f2), f2 ), dim=1 )
         else:
             x =  torch.abs(f1 - f2)
         score = torch.sigmoid(self.out_proj(x))

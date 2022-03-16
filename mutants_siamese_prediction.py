@@ -81,6 +81,86 @@ def evalutaion(args, model, device, loader_val, epoch, earlystopping ):
     logger.info(f"Epoch {epoch}, Valid, Eval Loss {evalloss}"  )
     return evalloss
 
+def test_eval_pair(args, device,test_on_projects, test_dataset_dict):
+    #set up model
+    tokenizer_word2vec = TokenIns( 
+            word2vec_file=os.path.join(args.sub_token_path, args.emb_file),
+            tokenizer_file=os.path.join(args.sub_token_path, "fun.model")
+        )
+    embeddings, word_emb_dim, vocab_size = tokenizer_word2vec.load_word2vec_embeddings()
+    encoder = GNN_encoder(args.num_layer,vocab_size, word_emb_dim, args.lstm_emb_dim, args.num_class, JK = args.JK, drop_ratio = args.dropout_ratio, 
+                            graph_pooling = args.graph_pooling, gnn_type = args.gnn_type, subword_emb=args.subword_embedding,
+                            bidrection=args.bidirection, task="mutants", repWay=args.repWay)
+    pytorch_total_params = sum(p.numel() for p in encoder.parameters() if p.requires_grad)
+    logger.info(f"Trainable Parameters Encoder {pytorch_total_params}\n")
+    
+    encoder.gnn.embedding.fine_tune_embeddings(True)
+    if not args.input_model_file == "-1":
+            encoder.gnn.embedding.init_embeddings(embeddings)
+            logger.info(f"Load Pretraning model {args.input_model_file}")
+            encoder.from_pretrained(args.input_model_file + ".pth", device)
+  
+    pytorch_total_params = sum(p.numel() for p in encoder.parameters() if p.requires_grad)
+    logger.info(f"\nTotal Number of Parameters of Model, {pytorch_total_params}")
+    model = MutantSiameseModel(600, args.num_class, encoder, args.dropratio)
+    pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    logger.info(f"Trainable Parameters Model {pytorch_total_params}\n")
+    f=os.path.join(args.saved_model_path, "saved_model.pt")
+    # print("'''''''''''''''''''''''''''''''''''''''")
+    # print(os.path.join(args.saved_model_path, "saved_model.pt") )
+    assert os.path.isfile( os.path.join(args.saved_model_path, "saved_model.pt") ), f"Fine tune weights file path is wrong {str(f)}"
+    model.load_state_dict( torch.load(os.path.join(args.saved_model_path, "saved_model.pt"), map_location="cpu") )
+    model.to(device)
+    model.eval()
+    sum_res = {}
+    total = 0 
+    pos = 0
+    for test_p in test_dataset_dict:
+        if test_p in test_on_projects:
+            try:
+                sum_res[test_p] = prediction_similarity_pair( test_dataset_dict[test_p].data, test_dataset_dict[test_p].project, device,model )
+                total += sum_res[test_p]["data_stat"][1]
+                pos += sum_res[test_p]["data_stat"][0]
+            except Exception as e:
+                logger.info( test_p )
+                logger.info( e )
+    logger.info(f"======== Count {pos/total}")
+    return sum_res
+
+def prediction_similarity_pair(testdataset, project, device, model):
+
+    test_loader = DataLoader(testdataset, batch_size=16, shuffle=False, num_workers = 2 ,follow_batch=['x_s', 'x_t'])
+    y_true = []
+    y_prediction = []
+    mid_list = []
+    for step, batch in enumerate(tqdm(test_loader, desc="Iteration")):
+            batch = batch.to(device)
+            with torch.no_grad():
+                outputs = model(batch)
+                if args.num_class == 2:
+                    y = batch.by
+                else:
+                    y = batch.my
+
+            y_true.append(y.cpu())
+            mid_list.append(batch.mid.cpu())
+            probability = torch.sigmoid(outputs)
+            y_prediction.append( probability.cpu() )
+    
+    y_true = torch.cat(y_true, dim = 0).detach().numpy().astype(np.float)
+    y_prediction = torch.cat(y_prediction, dim = 0).detach().numpy().astype(np.float)
+    mid_list = torch.cat(mid_list, dim=0)
+    
+  
+    # print(ground_truth_np.shape)
+    # print(max_score.shape)
+    # print(ground_truth_np)
+    res = ranking_performance(y_true, y_prediction)
+    pos_ratio = np.sum(y_true)/y_true.size
+    res["data_stat"] = [np.sum(y_true),y_true.size, pos_ratio ]
+    logger.info(f"{project} , {res}")
+    return res
+
 def test_eval(args, device,test_on_projects, test_dataset_dict):
     #set up model
     tokenizer_word2vec = TokenIns( 
@@ -106,18 +186,29 @@ def test_eval(args, device,test_on_projects, test_dataset_dict):
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info(f"Trainable Parameters Model {pytorch_total_params}\n")
     f=os.path.join(args.saved_model_path, "saved_model.pt")
+    # print("'''''''''''''''''''''''''''''''''''''''")
+    # print(os.path.join(args.saved_model_path, "saved_model.pt") )
     assert os.path.isfile( os.path.join(args.saved_model_path, "saved_model.pt") ), f"Fine tune weights file path is wrong {str(f)}"
+    logger.info(f"Load model path {str(f)}")
     model.load_state_dict( torch.load(os.path.join(args.saved_model_path, "saved_model.pt"), map_location="cpu") )
     model.to(device)
     model.eval()
     sum_res = {}
+    total = 0
+    pos = 0
     for test_p in test_dataset_dict:
         if test_p in test_on_projects:
             try:
                 sum_res[test_p] = prediction_similarity( test_dataset_dict[test_p], device,model )
+                total += sum_res[test_p]["data_stat"][1]
+                pos += sum_res[test_p]["data_stat"][0]
+                    # except Exception as e:
+                        #    logger.info( test_p )
+                        #   logger.info( e )
             except Exception as e:
                 logger.info( test_p )
                 logger.info( e )
+    logger.info(f"======== Count {pos/total}")
     return sum_res
 
 def prediction_similarity(testdataset, device, model):
@@ -177,6 +268,8 @@ def prediction_similarity(testdataset, device, model):
     # print(max_score.shape)
     # print(ground_truth_np)
     res = ranking_performance(ground_truth_np, max_score)
+    pos_ratio = np.sum(ground_truth_np)/ground_truth_np.size
+    res["data_stat"] =[ np.sum(ground_truth_np),  ground_truth_np.size, pos_ratio ]
     logger.info(f"{testdataset.project} , {res}")
     return res
 
@@ -207,7 +300,7 @@ def fecth_datalist(args, projects):
         if args.task == "killed":
             dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
         elif args.task == "relevance":
-            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0.8 )
+            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0.0 )
         else:
             assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
         dataset_list[p] = dataset_inmemory
@@ -362,15 +455,17 @@ def train_one_test_many(args):
     global contrastive_loss
     global self_contrastive_loss
     global suploss
+    global logger
     set_seed(args)
     device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
    
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(0)
     _, namelist = projects_dict(args)
-    test_dataset_dict = fetch_testdata(args, namelist )
+    
     orginalsavepath = args.saved_model_path
     if args.fine_tune == "yes":
+        logger = get_logger(os.path.join(args.saved_model_path, "log.txt"))
         for k in range(len(namelist)):
             train_on_projects = [ namelist[k] ]
             test_on_projects = [  ]
@@ -385,18 +480,26 @@ def train_one_test_many(args):
                 logger.info(f"fine tune {train_on_projects}")
                 train_mode(args, train_on_projects )
                 # run test
-                logger.info("prediction")
-                sum_res = test_eval(args, device, test_on_projects, test_dataset_dict)
-                json.dump( sum_res, open(os.path.join(args.saved_model_path, "few_shot_test.json"), "w") , indent=6) 
+                #logger.info("prediction")
+                #sum_res = test_eval(args, device, test_on_projects, test_dataset_dict)
+                #json.dump( sum_res, open(os.path.join(args.saved_model_path, "few_shot_test.json"), "w") , indent=6) 
             except Exception as e:
                 logger.info(e)     
             gc.collect()
             torch.cuda.empty_cache()  
     else:
+        logger = get_logger(os.path.join(args.saved_model_path, "eval.txt"))
         logger.info("prediction")
+        test_dataset_dict = fetch_testdata(args, namelist )
         args.saved_model_path =  os.path.dirname( args.saved_transfer_model_file )
         sum_res = test_eval(args, device, namelist, test_dataset_dict)
-        json.dump( sum_res, open(os.path.join(args.saved_model_path, "few_shot_test.json"), "w"), indent=6 ) 
+        json.dump( sum_res, open(os.path.join(args.saved_model_path, "few_shot_test_single.json"), "w"), indent=6 ) 
+        gc.collect()
+        torch.cuda.empty_cache() 
+
+        test_dataset_dict = fecth_datalist(args, namelist)
+        sum_res = test_eval_pair(args, device, namelist, test_dataset_dict)
+        json.dump( sum_res, open(os.path.join(args.saved_model_path, "few_shot_test_pair.json"), "w"), indent=6 ) 
     
 
 if __name__ == "__main__":
@@ -460,20 +563,16 @@ if __name__ == "__main__":
     parser.add_argument("--data_ratio", type=float, default=1.0, help='used dataset set size')
     parser.add_argument("--fine_tune",  type=str, default="no",
                         help='[yes, no]')
-    parser.add_argument("--check_failed",  type=str, default="yes",
+    parser.add_argument("--check_failed",  type=str, default="no",
                         help='[yes, no]')
     
     args = parser.parse_args( )
     with open(args.saved_model_path+'/commandline_args.txt', 'w') as f:
         json.dump(args.__dict__, f, indent=2)
 
-    args = parser.parse_args( )
-    with open(args.saved_model_path+'/commandline_args.txt', 'w') as f:
-        json.dump(args.__dict__, f, indent=2)
-
    
     assert len(args.projects) == 1
-    logger = get_logger(os.path.join(args.saved_model_path, "log.txt"))
+    logger = None #get_logger(os.path.join(args.saved_model_path, "log.txt"))
 
     train_one_test_many(args)
 

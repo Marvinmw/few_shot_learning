@@ -25,11 +25,11 @@ def ranking_performance(ground_truth_np, score_pre):
     # top k performance
     from utils.metrics import mean_reciprocal_ranks, average_precision, precision_at_k
     from sklearn.metrics import average_precision_score
-    mrr = mean_reciprocal_ranks( ground_truth_np, score_pre )
+    #mrr = mean_reciprocal_ranks( ground_truth_np, score_pre )
     map = average_precision_score( ground_truth_np, score_pre )
     
     # top k AP
-    top_k = [ 1, 5, 10, 20]
+    top_k = [ 1, 5, 10, 20, 30]
     precision_top_k = []
     for k in top_k:
         if ground_truth_np.size < k:
@@ -41,5 +41,5 @@ def ranking_performance(ground_truth_np, score_pre):
     #if "lang_25" == testdataset.project:
     #    logger.info( f"range {np.max(score), np.min(score)}" )
 
-    res = {"mrr":mrr, "map":map, "precision@k":precision_top_k, "roc_auc_score": roc_score, "pr_area":pr_area,"classification":[ acc, pre, re, f] }
+    res = { "map":map, "precision@k":precision_top_k, "roc_auc_score": roc_score, "pr_area":pr_area,"classification":[ acc, pre, re, f] }
     return res

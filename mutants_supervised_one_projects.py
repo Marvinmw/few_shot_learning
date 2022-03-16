@@ -126,7 +126,7 @@ def build_model(args, device):
 
 def eval_ranking(args, model, device, loader):
     y_true = []
-    y_score = []
+    y_prediction = []
     mid_list = []
     for step, batch in enumerate(tqdm(loader, desc="Iteration")):
             batch = batch.to(device)
@@ -140,12 +140,15 @@ def eval_ranking(args, model, device, loader):
             y_true.append(y.cpu())
             mid_list.append(batch.mid.cpu())
             probability = torch.softmax(outputs, dim=0 )[:, 1]
-            y_score.append( probability.cpu() )
+            y_prediction.append( probability.cpu() )
     
     y_true = torch.cat(y_true, dim = 0)
     y_prediction = torch.cat(y_prediction, dim = 0)
     mid_list = torch.cat(mid_list, dim=0)
-
+    #1 
+    y_true1, y_prediction1 = y_true.detach().numpy(), y_prediction.detach().numpy()
+    res1 = ranking_performance(y_true1,  y_prediction1)
+    #2
     mutants = list(set(mid_list.detach().numpy().tolist()))
     y_true, y_prediction = y_true.detach().numpy(), y_prediction.detach().numpy()
     ground_label = [  ]
@@ -153,9 +156,10 @@ def eval_ranking(args, model, device, loader):
     for mid in mutants:
         l =  1 if np.sum( y_true[mid_list==mid] ) else 0
         ground_label.append( l ) 
-        mscores = np.mean( prediction_score[mid_list==mid] )
+        mscores = np.mean( y_prediction[mid_list==mid] )
         prediction_score.append( mscores )
-    res = ranking_performance(ground_label,  prediction_score)
+    res2 = ranking_performance(ground_label,  prediction_score)
+    return res1, res2
     
 
 
@@ -365,10 +369,10 @@ def test_performance(args):
                 test_on_projects.append( namelist[j] )
         args.saved_model_path = f"{orginalsavepath}/{train_on_projects[0]}_fold/"
         assert os.path.isdir( args.saved_model_path )
-        try:
-            run_eval(args, test_on_projects, dataset_list)
-        except Exception as e:
-            logger.info(e)
+        # try:
+        run_eval(args, test_on_projects, dataset_list)
+        # except Exception as e:
+        #     logger.info(e)
         gc.collect()
         torch.cuda.empty_cache() 
 
@@ -379,24 +383,30 @@ def run_eval(args, test_projects, dataset_list):
         torch.cuda.manual_seed_all(0)
 
     logger.info(args.saved_model_path)
-    test_res = {}
+    test_res1 = {}
+    test_res2 = {}
     logger.info(f"Test Model Build")
     model = build_model(args, device)
+    cp = os.path.basename( args.saved_model_path ).replace("_fold", "")
     for tp in test_projects:
         logger.info(f"Test Project {tp}")
+        if cp == tp:
+            logger.info(f"Test Project {cp} skipped")
         dataset_inmemory = dataset_list[tp] 
         test_dataset = dataset_inmemory.data
         if len(test_dataset) == 0:
             continue
         loader_test = DataLoader( test_dataset, batch_size=min(int(args.batch_size/2), len(test_dataset)), shuffle=False, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
-        try:
-            res = eval_ranking(args, model, device, loader_test)
-            test_res[tp] = res
-            logger.info(f"{tp} {res}")   
-        except Exception as e:
-            logger.info(e)
-            test_res[tp] = []
-    json.dump( test_res, open(os.path.join(args.saved_model_path, "ranking_eval.json"), "w"), indent=6  )
+        # try:
+        res1, res2 = eval_ranking(args, model, device, loader_test)
+        test_res1[tp] = res1
+        test_res2[tp] = res2
+        logger.info(f"{tp} {res1, res2}")   
+        # except Exception as e:
+        #     logger.info(e)
+          
+    json.dump( test_res1, open(os.path.join(args.saved_model_path, "ranking_eval_pair.json"), "w"), indent=6  )
+    json.dump( test_res2, open(os.path.join(args.saved_model_path, "ranking_eval_single.json"), "w"), indent=6  )
 
 def train_mode(args, train_project, test_projects, dataset_list):
     os.makedirs( args.saved_model_path, exist_ok=True)
