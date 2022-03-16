@@ -139,7 +139,9 @@ def eval_ranking(args, model, device, loader):
 
             y_true.append(y.cpu())
             mid_list.append(batch.mid.cpu())
-            probability = torch.softmax(outputs, dim=0 )[:, 1]
+         #   print(outputs.shape)
+            probability = torch.softmax(outputs, dim=1 )[:, 1]
+          #  print( probability )
             y_prediction.append( probability.cpu() )
     
     y_true = torch.cat(y_true, dim = 0)
@@ -148,6 +150,8 @@ def eval_ranking(args, model, device, loader):
     #1 
     y_true1, y_prediction1 = y_true.detach().numpy(), y_prediction.detach().numpy()
     res1 = ranking_performance(y_true1,  y_prediction1)
+    pos_ratio = np.sum(y_true1)/y_true1.size
+    res1["data_stat"] = [np.sum(y_true1).astype(np.float),int(y_true1.size), pos_ratio ]
     #2
     mutants = list(set(mid_list.detach().numpy().tolist()))
     y_true, y_prediction = y_true.detach().numpy(), y_prediction.detach().numpy()
@@ -158,7 +162,9 @@ def eval_ranking(args, model, device, loader):
         ground_label.append( l ) 
         mscores = np.mean( y_prediction[mid_list==mid] )
         prediction_score.append( mscores )
-    res2 = ranking_performance(ground_label,  prediction_score)
+    res2 = ranking_performance(np.asarray(ground_label),  np.asarray(prediction_score))
+    pos_ratio = np.sum(ground_label)/len(ground_label)
+    res2["data_stat"] = [np.sum(ground_label).astype(np.float),int(len(ground_label)), pos_ratio ]
     return res1, res2
     
 
@@ -399,9 +405,11 @@ def run_eval(args, test_projects, dataset_list):
         loader_test = DataLoader( test_dataset, batch_size=min(int(args.batch_size/2), len(test_dataset)), shuffle=False, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
         # try:
         res1, res2 = eval_ranking(args, model, device, loader_test)
+        logger.info(f" pair {res1}")
+        logger.info(f" single {res2}")
         test_res1[tp] = res1
         test_res2[tp] = res2
-        logger.info(f"{tp} {res1, res2}")   
+      #  logger.info(f"{tp} {res1, res2}")   
         # except Exception as e:
         #     logger.info(e)
           

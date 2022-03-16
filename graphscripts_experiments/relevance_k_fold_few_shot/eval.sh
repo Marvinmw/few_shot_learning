@@ -34,7 +34,7 @@ python mutants_siamese_prediction.py --batch_size 256 --num_workers 5  --epochs 
 --warmup_schedule no \
 --saved_transfer_model_file $load_model \
 --task relevance \
---lazy no \
+--lazy yes \
 --fine_tune no \
 --projects $train_project
 
