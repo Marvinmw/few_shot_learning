@@ -6,7 +6,8 @@ gp=$4
 device=$5
 num_class=$6
 train_project=$7
-load_model=$8
+fine_tune=$8
+load_model=$9
 dropratio=0.1
 cd ../../
 
@@ -35,7 +36,7 @@ python mutants_siamese_prediction.py --batch_size 256 --num_workers 5  --epochs 
 --saved_transfer_model_file $load_model \
 --task relevance \
 --lazy no \
---fine_tune yes \
+--fine_tune $fine_tune \
 --projects $train_project
 
 
