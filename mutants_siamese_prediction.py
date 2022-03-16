@@ -384,7 +384,7 @@ def train_one_test_many(args):
                 # run test
                 logger.info("prediction")
                 sum_res = test_eval(args, device, test_on_projects, test_dataset_dict)
-                json.dump( sum_res, open(os.path.join(args.saved_model_path, "few_shot_test.json"), "w") ) 
+                json.dump( sum_res, open(os.path.join(args.saved_model_path, "few_shot_test.json"), "w") , indent=6) 
             except Exception as e:
                 logger.info(e)     
             gc.collect()
@@ -393,7 +393,7 @@ def train_one_test_many(args):
         logger.info("prediction")
         args.saved_model_path =  os.path.dirname( args.saved_transfer_model_file )
         sum_res = test_eval(args, device, namelist, test_dataset_dict)
-        json.dump( sum_res, open(os.path.join(args.saved_model_path, "few_shot_test.json"), "w") ) 
+        json.dump( sum_res, open(os.path.join(args.saved_model_path, "few_shot_test.json"), "w"), indent=6 ) 
     
 
 if __name__ == "__main__":
