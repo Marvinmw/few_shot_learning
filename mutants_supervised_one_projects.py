@@ -398,6 +398,7 @@ def run_eval(args, test_projects, dataset_list):
         logger.info(f"Test Project {tp}")
         if cp == tp:
             logger.info(f"Test Project {cp} skipped")
+            continue
         dataset_inmemory = dataset_list[tp] 
         test_dataset = dataset_inmemory.data
         if len(test_dataset) == 0:

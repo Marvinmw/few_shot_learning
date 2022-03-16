@@ -109,14 +109,19 @@ def test_eval_pair(args, device,test_on_projects, test_dataset_dict):
     # print("'''''''''''''''''''''''''''''''''''''''")
     # print(os.path.join(args.saved_model_path, "saved_model.pt") )
     assert os.path.isfile( os.path.join(args.saved_model_path, "saved_model.pt") ), f"Fine tune weights file path is wrong {str(f)}"
+    logger.info( f"Load Model {str(f)}" )
     model.load_state_dict( torch.load(os.path.join(args.saved_model_path, "saved_model.pt"), map_location="cpu") )
     model.to(device)
     model.eval()
     sum_res = {}
     total = 0 
     pos = 0
+    cp = os.path.basename( args.saved_model_path ).replace("_fold", "")
     for test_p in test_dataset_dict:
         if test_p in test_on_projects:
+            if cp == test_p:
+                logger.info(f"Test Project {cp} skipped")
+                continue
             try:
                 sum_res[test_p] = prediction_similarity_pair( test_dataset_dict[test_p].data, test_dataset_dict[test_p].project, device,model )
                 total += sum_res[test_p]["data_stat"][1]
@@ -196,8 +201,12 @@ def test_eval(args, device,test_on_projects, test_dataset_dict):
     sum_res = {}
     total = 0
     pos = 0
+    cp = os.path.basename( args.saved_model_path ).replace("_fold", "")
     for test_p in test_dataset_dict:
         if test_p in test_on_projects:
+            if cp == test_p:
+                logger.info(f"Test Project {cp} skipped")
+                continue
             try:
                 sum_res[test_p] = prediction_similarity( test_dataset_dict[test_p], device,model )
                 total += sum_res[test_p]["data_stat"][1]
