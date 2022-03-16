@@ -1,0 +1,46 @@
+#!/bin/bash -l
+#SBATCH -n 3
+#SBATCH -N 1
+#SBATCH -p gpu
+#SBATCH -G 1
+#SBATCH --time=2-00:00:00
+#SBATCH --qos=normal
+#SBATCH -J io_killed
+#SBATCH --mail-type=end,fail
+#SBATCH --mail-user=wei.ma@uni.lu
+#SBATCH -o %x-%j.log
+
+conda activate graph
+device=0
+num_class=2
+#killed
+for train_project in  io_12  io_9 csv_27 csv_17 csv_20 lang_21
+do
+for loss in SCL CE
+do
+output_folder=results/rerun/supervised_killed/${loss}/mutants_${num_class}_loss_${loss}_train_${train_project}/context
+bash run.sh gat "pretrained_models/context/gat/model_0" ${output_folder}/ attention $device $num_class $loss $train_project
+done
+done
+
+#relevance
+for train_project in  io_9 csv_27 csv_17 csv_18 lang_25 text_24
+do
+for loss in  CE SCL
+do
+output_folder=results/rerun/supervised_relevance_transferweights/${loss}/mutants_${num_class}_loss_${loss}_train_${train_project}/context
+bash run.sh gat "pretrained_models/context/gat/model_0" ${output_folder}/ attention $device $num_class $loss $train_project results/transfer_supervised_relevance/CE/mutants_2_loss_CE_rm_collections/context/gat/saved_model.pt
+done
+done
+
+
+for train_project in  io_9 csv_27 
+do
+for loss in  CE SCL
+do
+output_folder=results/rerun/supervised_relevance/${loss}/mutants_${num_class}_loss_${loss}_train_${train_project}/context
+bash run.sh gat "pretrained_models/context/gat/model_0" ${output_folder}/ attention $device $num_class $loss $train_project
+done
+done
+
+

@@ -36,6 +36,7 @@ python mutants_supervised_one_projects.py --batch_size 256 --num_workers 5  --ep
 --saved_transfer_model_file -1 \
 --task killed \
 --lazy no \
+--train yes \
 --projects $train_project
 
 

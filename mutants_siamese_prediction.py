@@ -378,6 +378,9 @@ def train_one_test_many(args):
                 if j != k:
                     test_on_projects.append( namelist[j] )
             args.saved_model_path = f"{orginalsavepath}/{train_on_projects[0]}_fold/"
+            if args.check_failed == "yes":
+                if os.path.isfile( os.path.join(args.saved_model_path, "saved_model.pt" ) ):
+                    continue
             try:
                 logger.info(f"fine tune {train_on_projects}")
                 train_mode(args, train_on_projects )
@@ -457,7 +460,9 @@ if __name__ == "__main__":
     parser.add_argument("--data_ratio", type=float, default=1.0, help='used dataset set size')
     parser.add_argument("--fine_tune",  type=str, default="no",
                         help='[yes, no]')
-
+    parser.add_argument("--check_failed",  type=str, default="yes",
+                        help='[yes, no]')
+    
     args = parser.parse_args( )
     with open(args.saved_model_path+'/commandline_args.txt', 'w') as f:
         json.dump(args.__dict__, f, indent=2)

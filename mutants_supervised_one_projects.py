@@ -20,6 +20,7 @@ from utils.classifier import MutantPairwiseModel
 from utils.ContrastiveLoss import ContrastiveLoss, SelfContrastiveLoss, SupConLoss
 import collections
 import random
+from utils.ranking import ranking_performance
 try:
     from transformers import get_linear_schedule_with_warmup as linear_schedule
 except:
@@ -113,11 +114,7 @@ def build_model(args, device):
     logger.info(f"Trainable Parameters Encoder {pytorch_total_params}\n")
     
     encoder.gnn.embedding.fine_tune_embeddings(True)
-    # if not args.input_model_file == "-1":
-    #         encoder.gnn.embedding.init_embeddings(embeddings)
-    #         logger.info(f"Load Pretraning model {args.input_model_file}")
-    #         encoder.from_pretrained(args.input_model_file + ".pth", device)
-  
+
     pytorch_total_params = sum(p.numel() for p in encoder.parameters() if p.requires_grad)
     logger.info(f"\nTotal Number of Parameters of Model, {pytorch_total_params}")
     model = MutantPairwiseModel(600, args.num_class, encoder, args.dropratio)
@@ -126,6 +123,42 @@ def build_model(args, device):
     model.load_state_dict( torch.load(os.path.join(args.saved_model_path, "saved_model.pt"), map_location="cpu") )
     model.to(device)
     return model
+
+def eval_ranking(args, model, device, loader):
+    y_true = []
+    y_score = []
+    mid_list = []
+    for step, batch in enumerate(tqdm(loader, desc="Iteration")):
+            batch = batch.to(device)
+            with torch.no_grad():
+                outputs, _ = model(batch)
+                if args.num_class == 2:
+                    y = batch.by
+                else:
+                    y = batch.my
+
+            y_true.append(y.cpu())
+            mid_list.append(batch.mid.cpu())
+            probability = torch.softmax(outputs, dim=0 )[:, 1]
+            y_score.append( probability.cpu() )
+    
+    y_true = torch.cat(y_true, dim = 0)
+    y_prediction = torch.cat(y_prediction, dim = 0)
+    mid_list = torch.cat(mid_list, dim=0)
+
+    mutants = list(set(mid_list.detach().numpy().tolist()))
+    y_true, y_prediction = y_true.detach().numpy(), y_prediction.detach().numpy()
+    ground_label = [  ]
+    prediction_score = [ ]
+    for mid in mutants:
+        l =  1 if np.sum( y_true[mid_list==mid] ) else 0
+        ground_label.append( l ) 
+        mscores = np.mean( prediction_score[mid_list==mid] )
+        prediction_score.append( mscores )
+    res = ranking_performance(ground_label,  prediction_score)
+    
+
+
 
 def test_eval(args, model, device, loader_test):
    
@@ -141,16 +174,11 @@ def test_eval(args, model, device, loader_test):
         for i in y_true[mid_list==mid]:
             if i%2 == 1:
                 l=True
-            #     ground_label.append(1)
-            # else:
-            #     ground_label.append(0)
         ground_label.append(int(l)) 
         l = False
         for k in y_prediction[mid_list==mid]:
             if k%2 == 1:
                  l=True
-            # else:
-            #     distill_predicted_label.append(0)
         distill_predicted_label.append(int(l))
     logger.info(f"Distill data {len(mid_list)} -> Mutants { len(mutants)}")
     distill_accuracy, distill_precision, distill_recall, distill_f1 = performance( ground_label,distill_predicted_label, average="binary")
@@ -309,14 +337,66 @@ def train_one_test_many(args):
             if j != k:
                 test_on_projects.append( namelist[j] )
         args.saved_model_path = f"{orginalsavepath}/{train_on_projects[0]}_fold/"
+        if args.check_failed == "yes":
+            if os.path.isfile( os.path.join(args.saved_model_path, "saved_model.pt" ) ):
+                logger.info(f"{train_on_projects} skip ")
+                continue
         try:
+            logger.info(f"{train_on_projects} re-train ")
             train_mode(args, train_on_projects, test_on_projects, dataset_list)
         except Exception as e:
             logger.info(e)
         gc.collect()
         torch.cuda.empty_cache()  
     
-    
+def test_performance(args):
+    set_seed(args)
+    device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(0)
+    _, namelist = projects_dict(args)
+    dataset_list = fecth_datalist(args, namelist)
+    orginalsavepath = args.saved_model_path
+    for k in range(len(namelist)):
+        train_on_projects = [ namelist[k] ]
+        test_on_projects = [  ]
+        for j in range(len(namelist)):
+            if j != k:
+                test_on_projects.append( namelist[j] )
+        args.saved_model_path = f"{orginalsavepath}/{train_on_projects[0]}_fold/"
+        assert os.path.isdir( args.saved_model_path )
+        try:
+            run_eval(args, test_on_projects, dataset_list)
+        except Exception as e:
+            logger.info(e)
+        gc.collect()
+        torch.cuda.empty_cache() 
+
+def run_eval(args, test_projects, dataset_list):
+    set_seed(args)
+    device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(0)
+
+    logger.info(args.saved_model_path)
+    test_res = {}
+    logger.info(f"Test Model Build")
+    model = build_model(args, device)
+    for tp in test_projects:
+        logger.info(f"Test Project {tp}")
+        dataset_inmemory = dataset_list[tp] 
+        test_dataset = dataset_inmemory.data
+        if len(test_dataset) == 0:
+            continue
+        loader_test = DataLoader( test_dataset, batch_size=min(int(args.batch_size/2), len(test_dataset)), shuffle=False, num_workers = args.num_workers,follow_batch=['x_s', 'x_t'])
+        try:
+            res = eval_ranking(args, model, device, loader_test)
+            test_res[tp] = res
+            logger.info(f"{tp} {res}")   
+        except Exception as e:
+            logger.info(e)
+            test_res[tp] = []
+    json.dump( test_res, open(os.path.join(args.saved_model_path, "ranking_eval.json"), "w"), indent=6  )
 
 def train_mode(args, train_project, test_projects, dataset_list):
     os.makedirs( args.saved_model_path, exist_ok=True)
@@ -458,19 +538,29 @@ if __name__ == "__main__":
                         help='warmup')
     parser.add_argument('--task', type=str, default="relevance",
                         help='[killed, relevance]')
+    # parser.add_argument('--evalutaion', type=str, default="yes",
+    #                     help='[yes, no]')
     parser.add_argument('--lazy', type=str, default="no",
                         help='save model')
     parser.add_argument("--projects", nargs="+", default=["collections"])
     parser.add_argument("--loss", type=str, default="CE", help='[CE, SCL]')
-
+    parser.add_argument("--evalutaion", type=str, default="no", help='[no, yes]')
+    parser.add_argument("--train", type=str, default="no", help='[no, yes]')
+    parser.add_argument("--check_failed", type=str, default="yes", help='[no, yes]')
     args = parser.parse_args( )
-    with open(args.saved_model_path+'/commandline_args.txt', 'w') as f:
-        json.dump(args.__dict__, f, indent=2)
-
-   
+    
     assert len(args.projects) == 1
-    logger = get_logger(os.path.join(args.saved_model_path, "log.txt"))
-    logger.info('start training!')
-    train_one_test_many(args)
-    logger.info('finishing training!')
+    if args.train == "yes":
+        with open(args.saved_model_path+'/commandline_args.txt', 'w') as f:
+            json.dump(args.__dict__, f, indent=2)
+        logger = get_logger(os.path.join(args.saved_model_path, f"{args.check_failed}_log.txt"))
+        logger.info('start training!')
+        train_one_test_many(args)
+        logger.info('finishing training!')
+
+    if args.evalutaion == "yes":
+        logger = get_logger(os.path.join(args.saved_model_path, "log_ranking.txt"))
+        logger.info('start eval!')
+        test_performance(args)
+        logger.info('finishing eval!')
 

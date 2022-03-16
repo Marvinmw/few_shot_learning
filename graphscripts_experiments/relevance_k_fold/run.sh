@@ -14,7 +14,7 @@ output=${output_prefix}/${gnn_type}
 sw=lstm
 jk=sum
 lstm_emb_dim=150
-mkdir -p $output
+#mkdir -p $output
 python mutants_supervised_one_projects.py --batch_size 256 --num_workers 5  --epochs 10 --num_layer 5 \
 --subword_embedding  $sw \
 --lstm_emb_dim $lstm_emb_dim \
@@ -36,6 +36,7 @@ python mutants_supervised_one_projects.py --batch_size 256 --num_workers 5  --ep
 --saved_transfer_model_file -1 \
 --task relevance \
 --lazy no \
+--train yes \
 --projects $train_project
 
 
