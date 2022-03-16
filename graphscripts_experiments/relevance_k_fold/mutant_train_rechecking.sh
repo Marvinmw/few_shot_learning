@@ -5,7 +5,7 @@
 #SBATCH -G 1
 #SBATCH --time=2-00:00:00
 #SBATCH --qos=normal
-#SBATCH -J jsc
+#SBATCH -J r_k_fold_checking
 #SBATCH --mail-type=end,fail
 #SBATCH --mail-user=wei.ma@uni.lu
 #SBATCH -o %x-%j.log
