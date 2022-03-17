@@ -119,12 +119,13 @@ def test_pair(args):
     test_dataset_list = fecth_datalist(args, test_namelist)
     sum_res = {}
     for p in test_dataset_list:
-        dataset = test_dataset_list[p]
+        dataset = test_dataset_list[p].data
         ground_truth = [ d.by.item() for d in dataset ] 
         dummpy_X = [ i for i in range(len(ground_truth))]
         probability = dummy_clf.predict_proba(dummpy_X)[:, 1]
         res = ranking_performance(np.asarray(ground_truth),  probability)
         sum_res[p] = res
+        logger.info(f"{p} , {res}")
     return sum_res
     
 def test_single(args):
@@ -154,11 +155,12 @@ def test_single(args):
     sum_res = {}
     for p in test_dataset_list:
         dataset = test_dataset_list[p].query_mutants
-        ground_truth = [ d.label_r_binary.item() for d in dataset ] 
+        ground_truth = [ d.label_r_binary for d in dataset ] 
         dummpy_X = [ i for i in range(len(ground_truth))]
         probability = dummy_clf.predict_proba(dummpy_X)[:, 1]
         res = ranking_performance(np.asarray(ground_truth),  probability)
         sum_res[p] = res
+        logger.info(f"{p} , {res}")
     return sum_res
 
 def train_mode(args):
@@ -166,8 +168,8 @@ def train_mode(args):
     set_seed(args)
     res1 = test_pair(args)
     res2 = test_single(args)
-    json.dump( res1, open(os.path.join(args.saved_model_path, "random_pair.json"), "w") )
-    json.dump( res2, open(os.path.join(args.saved_model_path, "test_single.json"), "w") )
+    json.dump( res1, open(os.path.join(args.saved_model_path, "random_pair.json"), "w"), indent=6 )
+    json.dump( res2, open(os.path.join(args.saved_model_path, "test_single.json"), "w") , indent=6 )
 
 
 if __name__ == "__main__":
@@ -181,7 +183,8 @@ if __name__ == "__main__":
                         help='[killed, relevance]')
     parser.add_argument("--projects", nargs="+", default=["collections"])
     parser.add_argument("--test_projects", nargs="+", default=[])
-   
+    parser.add_argument('--dataset', type=str, default = 'DV_PDG', help='root directory of dataset. For now, only classification.')
+    parser.add_argument('--dataset_path', type=str, default = 'dataset/pittest/', help='root directory of dataset. For now, only classification.') 
   
     args = parser.parse_args( )
     with open(args.saved_model_path+'/commandline_args.txt', 'w') as f:
@@ -195,7 +198,7 @@ if __name__ == "__main__":
         args.projects = usedp
     assert len(args.projects) == 4
     logger = get_logger(os.path.join(args.saved_model_path, "log.txt"))
-    logger.info('start training!')
+    logger.info('start random baseline!')
     train_mode(args)
-    logger.info('finishing training!')
+    logger.info('finishing random baseline!')
 

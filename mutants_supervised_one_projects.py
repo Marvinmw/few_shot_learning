@@ -151,7 +151,7 @@ def eval_ranking(args, model, device, loader):
     y_true1, y_prediction1 = y_true.detach().numpy(), y_prediction.detach().numpy()
     res1 = ranking_performance(y_true1,  y_prediction1)
     pos_ratio = np.sum(y_true1)/y_true1.size
-    res1["data_stat"] = [np.sum(y_true1).astype(np.float),int(y_true1.size), pos_ratio ]
+    res1["data_stat"] = [np.sum(y_true1).astype(float),int(y_true1.size), pos_ratio ]
     #2
     mutants = list(set(mid_list.detach().numpy().tolist()))
     y_true, y_prediction = y_true.detach().numpy(), y_prediction.detach().numpy()
