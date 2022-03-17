@@ -153,7 +153,7 @@ def prediction_similarity_pair(testdataset, project, device, model):
             y_prediction.append( probability.cpu() )
     
     y_true = torch.cat(y_true, dim = 0).detach().numpy().astype(np.float)
-    y_prediction = torch.cat(y_prediction, dim = 0).detach().numpy().astype(np.float)
+    y_prediction = torch.cat(y_prediction, dim = 0).detach().numpy().astype(float)
     mid_list = torch.cat(mid_list, dim=0)
     
   
