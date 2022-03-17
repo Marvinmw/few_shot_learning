@@ -30,7 +30,7 @@ def fecth_datalist(args, projects):
         if args.task == "killed":
             dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
         elif args.task == "relevance":
-            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0.8 )
+            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0.0 )
         else:
             assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
         dataset_list[p] = dataset_inmemory
@@ -113,7 +113,7 @@ def test_pair(args):
     json.dump(stat, open(os.path.join(args.saved_model_path, "stat.json"), "w")  , indent=6)
     dummy_clf = DummyClassifier(strategy="prior")
     dummy_clf.fit(train_x, train_y)
-    
+    pos = np.sum(train_y)/len(train_y) if args.prior =="yes" else 0.5
     # predict 
     test_projects, test_namelist = projects_dict(args, args.test_projects)
     test_dataset_list = fecth_datalist(args, test_namelist)
@@ -121,11 +121,14 @@ def test_pair(args):
     for p in test_dataset_list:
         dataset = test_dataset_list[p].data
         ground_truth = [ d.by.item() for d in dataset ] 
+        if len(ground_truth) == 0:
+            continue
         dummpy_X = [ i for i in range(len(ground_truth))]
-        probability = dummy_clf.predict_proba(dummpy_X)[:, 1]
+        probability = np.random.normal(loc=pos,  size=len(ground_truth) )  #dummy_clf.predict_proba(dummpy_X)[:, 1]
         res = ranking_performance(np.asarray(ground_truth),  probability)
+        res["pos"] = np.sum(ground_truth)/len(ground_truth)
         sum_res[p] = res
-        logger.info(f"{p} , {res}")
+        logger.info(f"{p} , {res}, prior {pos}")
     return sum_res
     
 def test_single(args):
@@ -153,14 +156,18 @@ def test_single(args):
     test_projects, test_namelist = projects_dict(args, args.test_projects)
     test_dataset_list = fetch_testdata(args, test_namelist)
     sum_res = {}
+    pos = np.sum(train_y)/len(train_y) if args.prior =="yes" else 0.5
     for p in test_dataset_list:
         dataset = test_dataset_list[p].query_mutants
         ground_truth = [ d.label_r_binary for d in dataset ] 
+        if len(ground_truth) == 0:
+            continue
         dummpy_X = [ i for i in range(len(ground_truth))]
-        probability = dummy_clf.predict_proba(dummpy_X)[:, 1]
+        probability = np.random.normal(loc=pos, size= len(ground_truth) ) #dummy_clf.predict_proba(dummpy_X)[:, 1]
         res = ranking_performance(np.asarray(ground_truth),  probability)
+        res["pos"] = np.sum(ground_truth)/len(ground_truth)
         sum_res[p] = res
-        logger.info(f"{p} , {res}")
+        logger.info(f"{p} , {res}, prior {pos}")
     return sum_res
 
 def train_mode(args):
@@ -169,7 +176,7 @@ def train_mode(args):
     res1 = test_pair(args)
     res2 = test_single(args)
     json.dump( res1, open(os.path.join(args.saved_model_path, "random_pair.json"), "w"), indent=6 )
-    json.dump( res2, open(os.path.join(args.saved_model_path, "test_single.json"), "w") , indent=6 )
+    json.dump( res2, open(os.path.join(args.saved_model_path, "random_single.json"), "w") , indent=6 )
 
 
 if __name__ == "__main__":
@@ -181,6 +188,8 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type = int, default =0, help='seed')
     parser.add_argument('--task', type=str, default="killed",
                         help='[killed, relevance]')
+    parser.add_argument('--prior', type=str, default="yes",
+                        help='[yes, no]')
     parser.add_argument("--projects", nargs="+", default=["collections"])
     parser.add_argument("--test_projects", nargs="+", default=[])
     parser.add_argument('--dataset', type=str, default = 'DV_PDG', help='root directory of dataset. For now, only classification.')
