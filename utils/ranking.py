@@ -25,7 +25,7 @@ def ranking_performance(ground_truth_np, score_pre):
     # top k performance
     from utils.metrics import mean_reciprocal_ranks, average_precision, precision_at_k
     from sklearn.metrics import average_precision_score
-    #mrr = mean_reciprocal_ranks( ground_truth_np, score_pre )
+    mrr = mean_reciprocal_ranks( ground_truth_np, score_pre )
     map = average_precision_score( ground_truth_np, score_pre )
     
     # top k AP
