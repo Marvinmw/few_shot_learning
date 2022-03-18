@@ -9,14 +9,14 @@
 #SBATCH --mail-type=end,fail
 #SBATCH --mail-user=wei.ma@uni.lu
 #SBATCH -o %x-%j.log
-
+#SBATCH -C volta32
 conda activate graph
 device=0
 num_class=2
 
 
 
-for train_project in  csv  io lang text collections 
+for train_project in  csv  io lang
 do
 for fine_tune in no
 do
