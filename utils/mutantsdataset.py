@@ -247,6 +247,8 @@ class MutantRelevanceDataset(InMemoryDataset):
                 if relevance_label == -1: # not considered
                     continue
                 interacted_mid_list = mutant_meta[str(mid)]["interaction"]
+                mutant_method_name =  mutant_meta[str(mid)]["mutatedMethod"]
+                mutant_class_name = mutant_meta[str(mid)]["mutatedClass"]
                 interacted_mid_list = [ int(i) for i in interacted_mid_list]
                 pos_graph = None
                 
@@ -255,16 +257,18 @@ class MutantRelevanceDataset(InMemoryDataset):
                         # print(mid)
                         # print(interacted_mid_list)
                         # print(on_change_graph.keys())
-                        pos_graph = on_change_graph[ int(interacted_mid) ] 
-                        relevance_mutant_data.append(PairData(mutant_graph.edge_index,  mutant_graph.x, mutant_graph.edge_attr,mutant_graph.ins_length, 
-                                                                pos_graph.edge_index,  pos_graph.x, pos_graph.edge_attr, pos_graph.ins_length, 
-                                                                torch.tensor(mutant_graph.label_r_binary), torch.tensor(mutant_graph.label_r_mul), torch.tensor(mutant_graph.mutant_type), torch.tensor(mid) ))
-                        relevance_mutant_binary_labels.append( mutant_graph.label_r_binary )
-                        relevance_mutant_multiple_labels.append( mutant_graph.label_r_mul )
+                        if mutant_meta[str(interacted_mid)]["mutatedMethod"] == mutant_method_name and mutant_meta[str(interacted_mid)]["mutatedClass"] == mutant_class_name:
+                            pos_graph = on_change_graph[ int(interacted_mid) ] 
+                            relevance_mutant_data.append(PairData(mutant_graph.edge_index,  mutant_graph.x, mutant_graph.edge_attr,mutant_graph.ins_length, 
+                                                                    pos_graph.edge_index,  pos_graph.x, pos_graph.edge_attr, pos_graph.ins_length, 
+                                                                    torch.tensor(mutant_graph.label_r_binary), torch.tensor(mutant_graph.label_r_mul), torch.tensor(mutant_graph.mutant_type), torch.tensor(mid) ))
+                            relevance_mutant_binary_labels.append( mutant_graph.label_r_binary )
+                            relevance_mutant_multiple_labels.append( mutant_graph.label_r_mul )
                 remaining_graph_list = []
                 for cid in on_change_graph:
                     if cid not in  interacted_mid_list:
-                       remaining_graph_list.append( on_change_graph[cid] ) 
+                        if mutant_meta[str(cid)]["mutatedMethod"] == mutant_method_name and mutant_meta[str(cid)]["mutatedClass"] == mutant_class_name:
+                            remaining_graph_list.append( on_change_graph[cid] ) 
 
                 #candiates_list = neg_graph_list
                 random.shuffle(remaining_graph_list)

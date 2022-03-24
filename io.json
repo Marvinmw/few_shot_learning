@@ -1,0 +1,9 @@
+{
+      "random_compare": 0.5046856375746488,
+      "few_shot_random_compare_t_test": 0.006677959931836669,
+      "few_shot_random_compare_u_test": 0.26696284684179494,
+      "few_shot_yes_random": [],
+      "large_ratio_random": [],
+      "few_shot_yes_ce": [],
+      "large_ratio_ce": []
+}

@@ -1,82 +1,196 @@
 import json
 import glob
 import collections
+from unittest import result
 import pandas as pd
-import matplotlib.pyplot as plt
-acc_yes = []
-pre_yes = []
-recall_yes = []
-f1_yes = []
+import os
+from scipy.stats import mannwhitneyu, ttest_rel
+def read_random(p):
+    rpair = json.load( open( os.path.join(p, "random_pair.json") ) )
+    rsingle = json.load( open( os.path.join(p, "random_single.json") ) )
+    return rpair, rsingle
 
-acc_no = []
-pre_no = []
-recall_no = []
-f1_no = []
+def read_fewshot(p):
+    rpair = json.load( open( os.path.join(p, "few_shot_test_pair.json") ) )
+    rsingle = json.load( open( os.path.join(p, "few_shot_test_single.json") ) )
+    return rpair, rsingle
 
-def read_performance(project, datapath="single_projects"):
-    pdir = f"{datapath}/mutants_class_contrastive_2_{project}_no"
-    sum_data = collections.defaultdict(list)
-    sum_stat = collections.defaultdict(list)
-    for pdir in [f"{datapath}/mutants_class_contrastive_2_{project}_yes", f"{datapath}/mutants_class_contrastive_2_{project}_no"]:
-        for f in glob.glob(f"{pdir}/**/gat_test_*"):
-            data = json.load(open(f"{f}/performance.json", "r"))["test"]
-            stat = json.load(open(f"{f}/stat.json", "r"))
-            train_size = sum(stat["train"].values())+sum(stat["val"].values())
-            test_size = sum(stat["test"].values())
-            for t in ["train", "test", "val"]:
-                if "0" not in stat[t]:
-                    stat["test"]["0"] = 0 
-            pversion = list( data.keys() )[0]
-            [loss, acc, precision, recall, f1] = data[pversion][:5]
-            sum_data[pversion].extend( [pversion, loss, acc, precision, recall, f1, train_size, test_size, (stat["train"]["0"]+ stat["val"]["0"])/train_size,
-            stat["test"]["0"]/test_size ] )
-      
+def read_ce(p):
+    rpair = json.load( open( os.path.join(p, "ranking_eval_pair.json") ) )
+    rsingle = json.load( open( os.path.join(p, "ranking_eval_single.json") ) )
+    return rpair, rsingle
 
-    df = pd.DataFrame.from_dict( sum_data, orient="index", columns=["name_yes","loss_yes", "acc_yes", "precision_yes", "recall_yes", "f1_yes", 
-            "train_size_yes", "test_size_yes", "train_live_yes", "test_live_yes", "name_no", "loss_no", "acc_no", "precision_no", "recall_no", "f1_no", 
-            "train_size_no", "test_size_no", "train_live_no", "test_live_no"] )
-    acc_yes.extend(df["acc_yes"].tolist())
-    pre_yes.extend(df["precision_yes"].tolist())
-    recall_yes.extend(df["recall_yes"].tolist())
-    f1_yes.extend(df["f1_yes"].tolist())
+def compare(project_name, t="pr_area"):
+    result = {}
+    random_yes_dir = f"results/random_prior/yes/mutants_{project_name}/context/"
+    random_yes_pair, random_yes_single = read_random( random_yes_dir )
+    random_no_dir = f"results/random_prior/no/mutants_{project_name}/context/"
+    random_no_pair, random_no_single = read_random( random_no_dir )
 
-    acc_no.extend(df["acc_no"].tolist())
-    pre_no.extend(df["precision_no"].tolist())
-    recall_no.extend(df["recall_no"].tolist())
-    f1_no.extend(df["f1_no"].tolist())
+    few_shot_relevance_no_dir = f"results/few_shot_relevance_fine_tune_no/mutants_{project_name}/context/gat"
+    few_no_pair, few_no_single = read_fewshot( few_shot_relevance_no_dir )
 
-    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(15,15))
-    df.plot.bar( "name_yes", ["acc_yes", "acc_no"], ax=axes[0][0])
-    df.plot.bar("name_yes", ["precision_yes", "precision_no"],  ax=axes[0][1])
-    df.plot.bar("name_yes", ["recall_yes", "recall_no"],  ax=axes[1][0])
-    df.plot.bar("name_yes", ["f1_yes", "f1_no"],  ax=axes[1][1])
-    plt.suptitle(project)
-    plt.savefig(f"{project}.pdf")
-    plt.savefig(f"{project}.jpg")
+    few_shot_relevance_yes_dir = f"results/few_shot_relevance_fine_tune_yes/mutants_{project_name}/context/gat"
+    supervised = f"results/supervised_relevance_transferweights/CE/mutants_{project_name}/context/gat"
+
+    # compare two random algorithms, few shot without finetune
+    namelist = list(random_yes_pair.keys())
+    random_yes_pair_list = []
+    random_no_pair_list = []
+    random_yes_single_list = []
+    random_no_single_list = []
+    few_no_pair_list = []
+    few_no_single_list = []
+    for n in namelist:
+         if n in few_no_pair and n in random_yes_pair and n in few_no_single:
+            random_yes_pair_list.append( random_yes_pair[n][t] )
+            random_no_pair_list.append( random_no_pair[n][t] )
+            random_yes_single_list.append( random_yes_single[n][t] )
+            random_no_single_list.append( random_no_single[n][t] )
+            few_no_pair_list.append( few_no_pair[n][t] )
+            few_no_single_list.append( few_no_single[n][t] )
+    U, p = mannwhitneyu(random_yes_pair_list, random_no_pair_list, alternative="greater" )
+    print(f"Pair random with prior and withoug prior, {len(random_yes_pair_list)}, U-Test {U} {p}")
+    result["random_compare"] = p
+    U, p = mannwhitneyu(random_yes_single_list, random_no_single_list, alternative="greater" )
+    print(f"Single random with prior and withoug prior,{len(random_yes_single_list)}, U-Test {U} {p}")
+
+    U, p = ttest_rel(few_no_pair_list, random_yes_pair_list, alternative="greater" )
+    print(f"Pair Few-no random , {len(few_no_pair_list)},T-Test {U} {p}")
+    result["few_shot_random_compare_t_test"] = p
+    U, p = ttest_rel(few_no_single_list, random_yes_single_list, alternative="greater" )
+    print(f"Single Few-no random , {len(few_no_single_list)},T-Test {U} {p}")
+    
+
+    U, p = mannwhitneyu(few_no_pair_list, random_yes_pair_list, alternative="greater" )
+    print(f"Pair Few-no random , {len(few_no_pair_list)},U-Test {U} {p}")
+    result["few_shot_random_compare_u_test"] = p
+    U, p = mannwhitneyu(few_no_single_list, random_yes_single_list, alternative="greater" )
+    print(f"Single Few-no random , {len(few_no_single_list)},U-Test {U} {p}")
+
+    # ss, pt = ttest_rel(random_yes, random_no, equal_var=True)
+    # print(f"random with prior and withoug prior Paired-T-Test {ss} {pt}")
+
+    # compare fine-tune-few-shot
+    p_values_compare_list = [ ]
+    larger_ratio_list = []
+    for n in namelist:
+        p = os.path.join( few_shot_relevance_yes_dir, f"{n}_fold")
+        try:
+            few_yes_pair, few_yes_single = read_fewshot(p)
+        except:
+            continue
+        random_yes_pair_list = []
+        random_yes_single_list = []
+        few_yes_pair_list = []
+        few_yes_single_list = []
+        for j in namelist:
+            if j == n: 
+                continue
+            if j in few_yes_pair and j in random_yes_pair and j in few_yes_single:
+                random_yes_pair_list.append( random_yes_pair[j][t] )
+                random_yes_single_list.append( random_yes_single[j][t] )
+                few_yes_pair_list.append( few_yes_pair[j][t] )
+                few_yes_single_list.append( few_yes_single[j][t] )
+            
+        U, p = mannwhitneyu(few_yes_pair_list, random_yes_pair_list, alternative="greater" )
+        c=0
+        for i in range(len(few_yes_pair_list)):
+            if few_yes_pair_list[i] > random_yes_pair_list[i]:
+                c = c + 1
+        larger_ratio = c/len(few_yes_pair_list)
+        larger_ratio_list.append( larger_ratio )
+        print(f"Pair Few-no random , {len(few_yes_pair_list)},U-Test {U} {p}")
+        p_values_compare_list.append( p )
+
+        U, p = mannwhitneyu(few_yes_single_list, random_yes_single_list, alternative="greater" )
+        print(f"Single Few-no random , {len(few_yes_single_list)},U-Test {U} {p}")
+    
+    result["few_shot_yes_random"] = p_values_compare_list
+    result["large_ratio_random"] = larger_ratio_list
+
+    # compare fine-tune-few-shot-CE
+    p_values_compare_list = [ ]
+    larger_ratio_list = []
+    for n in namelist:
+        p = os.path.join( few_shot_relevance_yes_dir, f"{n}_fold")
+        sp = os.path.join( supervised, f"{n}_fold")
+        try:
+            few_yes_pair, few_yes_single = read_fewshot(p)
+            ce_pair, ce_single = read_ce(sp)
+        except:
+            continue
+        ce_yes_pair_list = []
+        ce_yes_single_list = []
+        few_yes_pair_list = []
+        few_yes_single_list = []
+        for j in namelist:
+            if j == n: 
+                continue
+            if j in few_yes_pair and j in ce_pair and j in few_yes_single:
+                ce_yes_pair_list.append( ce_pair[j][t] )
+                ce_yes_single_list.append( ce_single[j][t] )
+                few_yes_pair_list.append( few_yes_pair[j][t] )
+                few_yes_single_list.append( few_yes_single[j][t] )
+            
+        U, p = mannwhitneyu(few_yes_pair_list, ce_yes_pair_list, alternative="greater" )
+        c=0
+        for i in range(len(few_yes_pair_list)):
+            if few_yes_pair_list[i] > ce_yes_pair_list[i]:
+                c = c + 1
+        larger_ratio = c/len(few_yes_pair_list)
+        larger_ratio_list.append( larger_ratio )
+        print(f"Pair Few-no random , {len(few_yes_pair_list)},U-Test {U} {p}")
+        p_values_compare_list.append( p )
+
+        U, p = mannwhitneyu(few_yes_single_list, ce_yes_single_list, alternative="greater" )
+        print(f"Single Few-no random , {len(few_yes_single_list)},U-Test {U} {p}")
+    
+    result["few_shot_yes_ce"] = p_values_compare_list
+    result["large_ratio_ce"] = p_values_compare_list
+    return result
+
+def box_plot(data, xlabel, name):
+    import matplotlib.pyplot as plt
+     
+    fig = plt.figure(figsize =(10, 7))
+    
+    # # Creating axes instance
+    # ax = fig.add_axes([0, 0, 1, 1])
+    
+    # Creating plot
+    plt.boxplot(data)
+    plt.xticks([1, 2, 3, 4], xlabel)
+    plt.title(name)
+    # show plot
     plt.show()
 
+if __name__ == "__main__":
+    print("--- collections ---")
+    res_collections = compare("collections")
+    print("--- lang ---")
+    res_lang = compare("lang")
+    print("--- text ---")
+    res_text = compare("text")
+    print("--- io ---")
+    res_io = compare("io")
+    print("--- csv ---")
+    res_csv = compare("csv")
 
+    json.dump( res_collections, open("collections.json", "w"), indent=6  )
+    json.dump( res_lang, open("lang.json", "w"), indent=6  )
+    json.dump( res_text, open("text.json", "w"), indent=6  )
+    json.dump( res_io, open("io.json", "w"), indent=6  )
+    json.dump( res_csv, open("csv.json", "w"), indent=6  )
 
-#read_performance("Gson")
-#read_performance("JacksonCore")
-#read_performance("JacksonXml")
-#read_performance("Lang")
-#read_performance("Math")
-#read_performance("Mockito")
-#read_performance("Time")
-read_performance("Cli")
-read_performance("Csv")
-read_performance("Compress")
-read_performance("Chart")
-read_performance("Jsoup")
-read_performance("JxPath")
+    box_plot([res_collections["few_shot_yes_ce"], res_lang["few_shot_yes_ce"], res_text["few_shot_yes_ce"],
+        res_csv["few_shot_yes_ce"]  ], ["collections", "lang", "text", "csv"],"Few-Shot VS Supervised, P-Value")
 
-from scipy.stats import mannwhitneyu
-U1, p = mannwhitneyu(acc_yes, acc_no, alternative="greater")
-print(p)
-U1, p = mannwhitneyu(pre_yes, pre_no, alternative="greater")
-print(p)
-U1, p = mannwhitneyu(recall_yes, recall_no, alternative="greater")
-print(p)
-U1, p = mannwhitneyu(f1_yes, f1_no, alternative="greater")
-print(p)
+    box_plot([res_collections["few_shot_yes_random"], res_lang["few_shot_yes_random"], res_text["few_shot_yes_random"],
+        res_csv["few_shot_yes_random"]  ], ["collections", "lang", "text", "csv"], "Few-Shot VS Random, P-Value")
+
+    
+    box_plot([res_collections["large_ratio_ce"], res_lang["large_ratio_ce"], res_text["large_ratio_ce"],
+        res_csv["large_ratio_ce"]  ], ["collections", "lang", "text", "csv"], "Few-Shot VS Random, Greater Times")
+    
+    
