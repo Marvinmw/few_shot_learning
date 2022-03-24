@@ -470,10 +470,15 @@ class MutantTestRelevanceDataset(Dataset):
                     continue
                 
                 interacted_mid_list = mutant_meta[str(mid)]["interaction"]
-                interacted_mid_index_list = [ on_change_graph[int(i)][1] for i in interacted_mid_list]
+                mutant_method_name =  mutant_meta[str(mid)]["mutatedMethod"]
+                mutant_class_name = mutant_meta[str(mid)]["mutatedClass"]
+                interacted_mid_index_list = []
+                for interacted_mid in interacted_mid_list:
+                    if mutant_meta[str(interacted_mid)]["mutatedMethod"] == mutant_method_name and mutant_meta[str(interacted_mid)]["mutatedClass"] == mutant_class_name:
+                        interacted_mid_index_list.append( on_change_graph[int(interacted_mid)][1] )
 
-                considered_mutants_index.append( mutant_graph_index )
-                interaction_index[ mutant_graph_index ] = interacted_mid_index_list
+                        considered_mutants_index.append( mutant_graph_index )
+                        interaction_index[ mutant_graph_index ] = interacted_mid_index_list
              
                 
         #print(  os.path.dirname(self.processed_paths[0]) )
@@ -489,11 +494,7 @@ class MutantTestRelevanceDataset(Dataset):
         #        neg_index.append( k )
         #random.shuffle( k_list )
 
-        
-
-
-  
-
+          
 
 class PairData(Data):
     
