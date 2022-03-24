@@ -169,7 +169,7 @@ class MutantRelevanceDataset(InMemoryDataset):
     
     @property
     def processed_file_names(self):
-        suffix=f"{self.dataname}_{self.project}_{self.probability}"
+        suffix=f"inmethod_{self.dataname}_{self.project}_{self.probability}"
         return [ f'relevance/relevance_processed_{suffix}.pt', f"relevance/relevance_info_{suffix}.pt", 
                 f"relevance/bstat_{suffix}.json", f"relevance/mstat_{suffix}.json"]
     
