@@ -102,6 +102,7 @@ def nx_to_graph_data_obj_simple(G):
 def preprocess(class_method_id_json, graph_json , rawins_json
     , nodetype, edgetype, tokenizer_word2vec, dataname, graph_meta_info, datatype, outputdir):
     inputgraph_meta = json.load( open( graph_json ) )
+    print(graph_json)
     rawins_meta = json.load( open( rawins_json ) )
     graph_id_list = [ ]
     graph_labels = []
@@ -158,7 +159,7 @@ def preprocess(class_method_id_json, graph_json , rawins_json
         data_geometric.graphID = int(method_id) 
         if datatype == "mutants":
             data_geometric.mutantID = int(graph_meta_info[method_id]["mid"])
-            data_geometric.interaction_mid = int(graph_meta_info[method_id]["interaction"])
+            #data_geometric.interaction_mid = int(graph_meta_info[method_id]["interaction"])
             data_geometric.interaction_graph_id = -1 #int(graph_meta_info[method_id]["interaction_mutant_graph_id"])
             data_geometric.mutant_type = int(graph_meta_info[method_id]["mutator_label"])
             data_geometric.label_k_binary = int( graph_meta_info[method_id]["killed_label"] )
@@ -167,11 +168,12 @@ def preprocess(class_method_id_json, graph_json , rawins_json
             data_geometric.label_r_mul = int( graph_meta_info[method_id]["relevance_mutator_label"] )
             data_geometric.org_graph_id = int( graph_meta_info[method_id]["org_graph_id"])
             data_geometric.on_change = int( graph_meta_info[method_id]["On_Change"])
+            data_geometric.submsuing_r = int( graph_meta_info[method_id]["subming_relevant"]  )
            # data_geometric.y= int( graph_meta_info[method_id]["label"] )
             graph_id_list.append(  method_id )
         elif datatype == "original":
             data_geometric.mutantID = -1
-            data_geometric.interaction_mid = -1
+           # data_geometric.interaction_mid = -1
             data_geometric.interaction_graph_id = -1
             data_geometric.mutant_type = -1
             data_geometric.label_k_binary = -1
@@ -180,6 +182,7 @@ def preprocess(class_method_id_json, graph_json , rawins_json
             data_geometric.label_r_mul = -1
             data_geometric.org_graph_id = -1
             data_geometric.on_change = -1
+            data_geometric.submsuing_r = -1
             graph_id_list.append(  int(method_id) )
         else:
             assert False
@@ -193,6 +196,7 @@ def preprocess(class_method_id_json, graph_json , rawins_json
 
 
 def preprocess_relevance(pfolder):
+    print(pfolder)
     mutant_meta = json.load( open( os.path.join(pfolder, "mutants_info_graph_ids.json") ) )
    # mutant_types = json.load( open( os.path.join(pfolder, "mutants_type.json") ) )
     if mutant_meta is None:
@@ -211,12 +215,13 @@ def preprocess_relevance(pfolder):
         mutant_meta[ mutant_id ]["mid"] = mutant_id
         assert mutant_meta[mutant_id]["mutant_graph_id"] not in mutant2Graph
         mutant2Graph[mutant_meta[mutant_id]["mutant_graph_id"]] = mutant_meta[ mutant_id ]
+        assert "subming_relevant" in mutant_meta[ mutant_id ], f"{pfolder}"
         org2Mutant.add( mutant_meta[mutant_id]["org_graph_id"] )
 
     tasks = { "original":org2Mutant, "mutants":mutant2Graph }
     pid = os.path.basename( pfolder )
-    try:
-        for k,v in tasks.items():
+    #try:
+    for k,v in tasks.items():
             outputdir = os.path.join( outputfolder, pid, "raw", k, "graph")
             os.makedirs(outputdir, exist_ok=True)
             class_method_id_json = os.path.join( pfolder, k, "class_method_id_mapping.json" )
@@ -225,10 +230,10 @@ def preprocess_relevance(pfolder):
                 graph_json = os.path.join(pfolder, k, f"{dataname}.json")
                 preprocess(class_method_id_json, graph_json , rawins_json
                     , nodetype, edgetype, tokenizer_word2vec, dataname,  v, k,outputdir)
-    except Exception as e:
-        print(e)
-        outputdir = os.path.join( outputfolder, pid)
-        shutil.rmtree(outputdir)
+    # except Exception as e:
+    #     print(e)
+    #     outputdir = os.path.join( outputfolder, pid)
+    #     shutil.rmtree(outputdir)
 
 def copy_folder(pfolder):
     mutant_meta =os.path.join(pfolder, "mutants_info_graph_ids.json") 
@@ -265,7 +270,8 @@ if __name__ == "__main__":
     parser.add_argument("-i", "--input", dest="input", default="./relevance_java_dot_byteinfo")
     args = parser.parse_args()
     outputfolder = args.output
-    run_copy( args.input  )
+    #run( args.input  )
+    run_copy(args.input )
     
 
     

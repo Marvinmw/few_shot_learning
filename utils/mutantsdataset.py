@@ -9,7 +9,7 @@ import numpy as np
 from itertools import compress
 from .tools import  inverse_eage
 import numpy as np
-
+from .tools import get_logger
 
 import torch
 from torch_geometric.data import Dataset
@@ -134,7 +134,9 @@ class MutantKilledDataset(InMemoryDataset):
         json.dump(bstat, open(self.processed_paths[2], "w") , indent=6)
         json.dump(mstat, open(self.processed_paths[3], "w") , indent=6)
 
-  
+
+logger = get_logger("empty_data.txt")
+
 class MutantRelevanceDataset(InMemoryDataset):
     def __init__(self, root, dataname, project="",probability=0.6, transform=None, pre_transform=None, pre_filter=None):
         self.root = root
@@ -299,6 +301,8 @@ class MutantRelevanceDataset(InMemoryDataset):
         mstat = collections.Counter(relevance_mutant_multiple_labels)
         json.dump(bstat, open(self.processed_paths[2], "w") , indent=6)
         json.dump(mstat, open(self.processed_paths[3], "w") , indent=6)
+        if len(relevance_mutant_binary_labels) == 0:
+            logger.info(f"{self.root}")
 
 
 def balanced_subsample(x,y,subsample_size=1.0):
@@ -433,7 +437,7 @@ class MutantTestRelevanceDataset(Dataset):
     
     @property
     def processed_file_names(self):
-        suffix=f"{self.dataname}_{self.project}_idpair"
+        suffix=f"inmethod_{self.dataname}_{self.project}_idpair"
         return [ f'relevance/relevance_processed_{suffix}.pt']
     
     def download(self):

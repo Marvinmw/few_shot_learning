@@ -176,7 +176,7 @@ import argparse
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='extract mutants source code.')
-    parser.add_argument( '--input', default="defects4j/res_middle/Chart_12_fixed|defects4j_middle_graph/Chart_12_fixed" , type=str)
+   # parser.add_argument( '--input', default="defects4j/res_middle/Chart_12_fixed|defects4j_middle_graph/Chart_12_fixed" , type=str)
     parser.add_argument( '--task', default="extract_mutants_graph_task" , type=str)
     args = parser.parse_args()
     task_fn = {"extract_mutants_graph_task":extract_mutants_graph_task}

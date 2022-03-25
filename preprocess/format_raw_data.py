@@ -92,6 +92,7 @@ def replace_name(mutatns_folder, interactionfile,mutants_info, mutant_matrix_fil
                     info["relevance_label"] = 1 if r["On_Change"] + r["Relevant"] > 0 else 0
                 else:
                     info["relevance_label"] = -1
+                info["subming_relevant"] = 1 if r["Minimal_relevant"] else 0
                 rid = r["MutantID"]
                 info["killed_label"] = 1 if df_kill_matrix.loc[rid, :]["sum"] > 0 else 0
                 info["methodDescription"] = r["methodDescription"]
@@ -180,13 +181,13 @@ if __name__ == '__main__':
                     #  shutil.move(c_folder, "failed_projects/")
         
         # copy original class
-        for p in os.listdir(data_folder):
-            for c in os.listdir( os.path.join(data_folder, p) ):
-                c_folder = os.path.join(data_folder, p, c)
-                #print(c_folder)
-                if os.path.isfile(c_folder):
-                    continue
-                copy_original_class(f"{c_folder}")
+        # for p in os.listdir(data_folder):
+        #     for c in os.listdir( os.path.join(data_folder, p) ):
+        #         c_folder = os.path.join(data_folder, p, c)
+        #         #print(c_folder)
+        #         if os.path.isfile(c_folder):
+        #             continue
+        #         copy_original_class(f"{c_folder}")
     
    
 

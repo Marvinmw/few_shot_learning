@@ -222,21 +222,21 @@ def create_dataset(args, train_projects, dataset_list):
     return loader, loader_val, loader_test, train_projects, {"train":train_stat, "val":val_stat, "test":test_stat}
 
 
-def projects_dict(args):
-    projects = collections.defaultdict(list)
-    name=[]
-    if len(args.projects) > 1:
-        for p in args.projects:
-            for pf in glob.glob(f"{args.dataset_path}/{p}*"):
-                projects[p].append(os.path.basename(pf))
-                name.append( os.path.basename(pf) )
-    elif len(args.projects) == 1:
-        for p in args.projects:
-            for pf in glob.glob(f"{args.dataset_path}/{p}*"):
-                n=os.path.basename(pf)
-                projects[n].append(os.path.basename(pf))
-                name.append( os.path.basename(pf) )
-    return projects, name
+# def projects_dict(args):
+#     projects = collections.defaultdict(list)
+#     name=[]
+#     if len(args.projects) > 1:
+#         for p in args.projects:
+#             for pf in glob.glob(f"{args.dataset_path}/{p}*"):
+#                 projects[p].append(os.path.basename(pf))
+#                 name.append( os.path.basename(pf) )
+#     elif len(args.projects) == 1:
+#         for p in args.projects:
+#             for pf in glob.glob(f"{args.dataset_path}/{p}*"):
+#                 n=os.path.basename(pf)
+#                 projects[n].append(os.path.basename(pf))
+#                 name.append( os.path.basename(pf) )
+#     return projects, name
 
 
 

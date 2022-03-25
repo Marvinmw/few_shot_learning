@@ -24,6 +24,8 @@ def set_seed(args):
 
 
 import glob
+
+
 def fecth_datalist(args, projects):
     dataset_list = {}
     for p in projects:
@@ -51,24 +53,24 @@ def projects_dict(args):
 def prepparedata(args):
     projects, namelist = projects_dict(args)
     dataset_list = fecth_datalist(args, namelist)   
-    with open( f"relevance_sr.txt", "w") as fr, open(f"relevance_fixed_b.txt", "w") as fb, open(f"relevance_fixed_m.txt", "w") as fm:
-        fr.write("test,val,train,name \n")
-        fb.write("test,val,train,name \n")
-        fm.write("test,val,train,name \n")
-        for p in dataset_list:
-            dataset = dataset_list[p]
-            test, val, train = dataset.splitting_ratio()
-            fr.write(f"{test}, {val}, {train}, {p} \n")
-            if args.task == "relevance":
-                test, val, train = dataset.splitted_fixed(dataset.relevance_mutant_binary_labels, fixed_train=10)
-                fb.write(f"{test}, {val}, {train}, {p} \n")
-                test, val, train = dataset.splitted_fixed(dataset.relevance_mutant_multiple_labels, fixed_train=10)
-                fm.write(f"{test}, {val}, {train}, {p} \n")
-            else:
-                test, val, train = dataset.splitted_fixed(dataset.kill_mutant_binary_labels, fixed_train=10)
-                fb.write(f"{test}, {val}, {train}, {p} \n")
-                test, val, train = dataset.splitted_fixed(dataset.kill_mutant_multiple_labels, fixed_train=10)
-                fm.write(f"{test}, {val}, {train}, {p} \n")
+    # with open( f"relevance_sr.txt", "w") as fr, open(f"relevance_fixed_b.txt", "w") as fb, open(f"relevance_fixed_m.txt", "w") as fm:
+    #     fr.write("test,val,train,name \n")
+    #     fb.write("test,val,train,name \n")
+    #     fm.write("test,val,train,name \n")
+    #     for p in dataset_list:
+    #         dataset = dataset_list[p]
+    #         test, val, train = dataset.splitting_ratio()
+    #         fr.write(f"{test}, {val}, {train}, {p} \n")
+            # if args.task == "relevance":
+            #     test, val, train = dataset.splitted_fixed(dataset.relevance_mutant_binary_labels, fixed_train=10)
+            #     fb.write(f"{test}, {val}, {train}, {p} \n")
+            #     test, val, train = dataset.splitted_fixed(dataset.relevance_mutant_multiple_labels, fixed_train=10)
+            #     fm.write(f"{test}, {val}, {train}, {p} \n")
+            # else:
+            #     test, val, train = dataset.splitted_fixed(dataset.kill_mutant_binary_labels, fixed_train=10)
+            #     fb.write(f"{test}, {val}, {train}, {p} \n")
+            #     test, val, train = dataset.splitted_fixed(dataset.kill_mutant_multiple_labels, fixed_train=10)
+            #     fm.write(f"{test}, {val}, {train}, {p} \n")
   
 
    

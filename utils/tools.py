@@ -29,6 +29,34 @@ def get_logger(filename, verbosity=1, name=None):
 
     return logger
 
+import json
+import collections
+import os
+import glob
+def projects_dict(args):
+    projects = collections.defaultdict(list)
+    name=[]
+    empty_data = json.load( open("empty_data.json") ) if args.task == "relevance" else []
+    if len(args.projects) > 1:
+        for p in args.projects:
+            for pf in glob.glob(f"{args.dataset_path}/{p}*"):
+                if os.path.basename(pf) in empty_data:
+                    continue
+                projects[p].append(os.path.basename(pf))
+                name.append( os.path.basename(pf) )
+    elif len(args.projects) == 1:
+        for p in args.projects:
+            print(p)
+            for pf in glob.glob(f"{args.dataset_path}/{p}*"):
+               # print(pf)
+                n=os.path.basename(pf)
+                #print(n)
+                if os.path.basename(pf) in empty_data:
+                    continue
+                projects[n].append(os.path.basename(pf))
+                name.append( os.path.basename(pf) )
+    return projects, name
+
 
 def accuracy(y, pred):
     return accuracy_score(y, pred)
