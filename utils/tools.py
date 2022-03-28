@@ -9,6 +9,32 @@ from sklearn.metrics import (
     matthews_corrcoef,
 )
 from torch.functional import Tensor
+from mutantsdataset import MutantKilledDataset, MutantRelevanceDataset, MutantTestRelevanceDataset
+from tqdm import tqdm
+
+def fetch_datalist(args, projects):
+    dataset_list = {}
+    for s, p in enumerate(tqdm(projects, desc="Iteration")):
+        if args.task == "killed":
+            dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
+        elif args.task == "relevance" or args.task == "subsuming":
+            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0.0 )
+        else:
+            assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
+        dataset_list[p] = dataset_inmemory
+    return dataset_list
+
+def fetch_testdata(args, projects):
+    dataset_list = {}
+    for s, p in enumerate(tqdm(projects, desc="Iteration")):
+        if args.task == "killed":
+            dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
+        elif args.task == "relevance" or args.task == "subsuming":
+            dataset_inmemory = MutantTestRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
+        else:
+            assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
+        dataset_list[p] = dataset_inmemory
+    return dataset_list
 
 import logging
 def get_logger(filename, verbosity=1, name=None):

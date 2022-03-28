@@ -13,7 +13,7 @@ import os
 from tqdm import tqdm
 import numpy as np
 from utils.model import  GNN_encoder
-from utils.tools import performance, TokenIns, get_logger
+from utils.tools import performance, TokenIns, get_logger, projects_dict, fecth_datalist
 from utils.pytorchtools import EarlyStopping
 from utils.AverageMeter import AverageMeter
 from utils.classifier import MutantPairwiseModel
@@ -165,18 +165,18 @@ def eval(args, model, device, loader):
     "weighted":[accuracy_weighted, precision_weighted, recall_weighted, f1_weighted], "micro":[accuracy_micro, precision_micro, recall_micro, f1_micro]}
     return evalloss.avg, accuracy, precision, recall, f1, result
 
-import glob
-def fecth_datalist(args, projects):
-    dataset_list = {}
-    for s, p in enumerate(tqdm(projects, desc="Iteration")):
-        if args.task == "killed":
-            dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
-        elif args.task == "relevance":
-            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0.8 )
-        else:
-            assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
-        dataset_list[p] = dataset_inmemory
-    return dataset_list
+#import glob
+#def fecth_datalist(args, projects):
+#    dataset_list = {}
+#    for s, p in enumerate(tqdm(projects, desc="Iteration")):
+#        if args.task == "killed":
+#            dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
+#        elif args.task == "relevance":
+#            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0.8 )
+#        else:
+#            assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
+#        dataset_list[p] = dataset_inmemory
+#    return dataset_list
 
 def create_dataset(args, train_projects, dataset_list):
     train_dataset = [ ]
@@ -187,6 +187,10 @@ def create_dataset(args, train_projects, dataset_list):
             dataset_inmemory = dataset_list[tp] 
             dataset = dataset_inmemory.data
             data.extend( dataset )
+    
+    if args.task == "subsuming":
+        for d in data:
+            d.by = d.sy
     #data=data[:2000] # for local debug
     #args.batch_size=64 # for local debug
     random.shuffle(data)
@@ -383,7 +387,7 @@ if __name__ == "__main__":
     parser.add_argument('--warmup_schedule', type=str, default="no",
                         help='warmup')
     parser.add_argument('--task', type=str, default="killed",
-                        help='[killed, relevance]')
+                        help='[killed, relevance, subsuming]')
     parser.add_argument('--lazy', type=str, default="no",
                         help='save model')
     parser.add_argument("--projects", nargs="+", default=["collections"])

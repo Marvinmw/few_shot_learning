@@ -263,7 +263,7 @@ class MutantRelevanceDataset(InMemoryDataset):
                             pos_graph = on_change_graph[ int(interacted_mid) ] 
                             relevance_mutant_data.append(PairData(mutant_graph.edge_index,  mutant_graph.x, mutant_graph.edge_attr,mutant_graph.ins_length, 
                                                                     pos_graph.edge_index,  pos_graph.x, pos_graph.edge_attr, pos_graph.ins_length, 
-                                                                    torch.tensor(mutant_graph.label_r_binary), torch.tensor(mutant_graph.label_r_mul), torch.tensor(mutant_graph.mutant_type), torch.tensor(mid) ))
+                                                                    torch.tensor(mutant_graph.label_r_binary), torch.tensor(mutant_graph.label_r_mul), torch.tensor(mutant_graph.submsuing_r), torch.tensor(mutant_graph.mutant_type), torch.tensor(mid) ))
                             relevance_mutant_binary_labels.append( mutant_graph.label_r_binary )
                             relevance_mutant_multiple_labels.append( mutant_graph.label_r_mul )
                 remaining_graph_list = []
@@ -503,7 +503,7 @@ class MutantTestRelevanceDataset(Dataset):
 class PairData(Data):
     
     def __init__(self, edge_index_s=None, x_s=None, edge_attr_s=None, ins_length_s=None, edge_index_t=None, x_t=None,  edge_attr_t=None, 
-                        ins_length_t=None,by=None,my=None, type=None, mid=None):
+                        ins_length_t=None,by=None,my=None, sy=None,type=None, mid=None):
         super(PairData, self).__init__()
         self.edge_index_s = edge_index_s
         self.x_s = x_s
@@ -518,6 +518,7 @@ class PairData(Data):
         self.my = my
         self.type=type
         self.mid = mid
+        self.sy = sy
         if x_s is None:
              print("Debug")
 

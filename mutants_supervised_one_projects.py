@@ -244,18 +244,18 @@ def eval(args, model, device, loader):
     "weighted":[accuracy_weighted, precision_weighted, recall_weighted, f1_weighted], "micro":[accuracy_micro, precision_micro, recall_micro, f1_micro]}
     return evalloss.avg, accuracy, precision, recall, f1, result, mid_list, y_true, y_prediction
 
-import glob
-def fecth_datalist(args, projects):
-    dataset_list = {}
-    for p in projects:
-        if args.task == "killed":
-            dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
-        elif args.task == "relevance":
-            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0.0 )
-        else:
-            assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
-        dataset_list[p] = dataset_inmemory
-    return dataset_list
+#import glob
+#def fecth_datalist(args, projects):
+#    dataset_list = {}
+#    for p in projects:
+#        if args.task == "killed":
+#            dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
+#        elif args.task == "relevance":
+#            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0.0 )
+#        else:
+#            assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
+#        dataset_list[p] = dataset_inmemory
+#    return dataset_list
 
 def create_dataset(args, train_projects, dataset_list):
     train_dataset = [ ]
@@ -266,7 +266,10 @@ def create_dataset(args, train_projects, dataset_list):
             dataset_inmemory = dataset_list[tp]
             dataset = dataset_inmemory.data
             data.extend( dataset )
-   
+    if args.task == "subsuming":
+        for d in data:
+            d.by = d.sy
+
     random.shuffle(data)
     y = [ d.by.item() for d in data ]
     stat = collections.Counter(y)

@@ -2,7 +2,7 @@ from pydoc import describe
 import sys
 # setting path
 sys.path.append('../')
-from utils.mutantsdataset import MutantKilledDataset, MutantRelevanceDataset, MutantTestRelevanceDataset
+#from utils.mutantsdataset import MutantKilledDataset, MutantRelevanceDataset, MutantTestRelevanceDataset
 import argparse
 import json
 from torch_geometric.data import DataLoader
@@ -13,7 +13,7 @@ import os
 from tqdm import tqdm
 import numpy as np
 from utils.model import  GNN_encoder
-from utils.tools import performance, TokenIns, get_logger, projects_dict
+from utils.tools import performance, TokenIns, get_logger, projects_dict,fecth_datalist, fetch_testdata
 from utils.pytorchtools import EarlyStopping
 from utils.AverageMeter import AverageMeter
 from utils.classifier import MutantSiameseModel
@@ -303,29 +303,29 @@ def eval(args, model, device, loader):
     return evalloss.avg
 
 import glob
-def fecth_datalist(args, projects):
-    dataset_list = {}
-    for s, p in enumerate(tqdm(projects, desc="Iteration")):
-        if args.task == "killed":
-            dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
-        elif args.task == "relevance":
-            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0.0 )
-        else:
-            assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
-        dataset_list[p] = dataset_inmemory
-    return dataset_list
+#def fecth_datalist(args, projects):
+#    dataset_list = {}
+#    for s, p in enumerate(tqdm(projects, desc="Iteration")):
+#        if args.task == "killed":
+#            dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
+#        elif args.task == "relevance":
+#            dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0.0 )
+#        else:
+#            assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
+#        dataset_list[p] = dataset_inmemory
+#    return dataset_list
 
-def fetch_testdata(args, projects):
-    dataset_list = {}
-    for s, p in enumerate(tqdm(projects, desc="Iteration")):
-        if args.task == "killed":
-            dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
-        elif args.task == "relevance":
-            dataset_inmemory = MutantTestRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
-        else:
-            assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
-        dataset_list[p] = dataset_inmemory
-    return dataset_list
+#def fetch_testdata(args, projects):
+#    dataset_list = {}
+#    for s, p in enumerate(tqdm(projects, desc="Iteration")):
+#        if args.task == "killed":
+#            dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
+#        elif args.task == "relevance":
+#            dataset_inmemory = MutantTestRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
+#        else:
+#            assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
+#        dataset_list[p] = dataset_inmemory
+#    return dataset_list
 
 
 def create_dataset(args, train_projects, dataset_list):
@@ -339,6 +339,9 @@ def create_dataset(args, train_projects, dataset_list):
             data.extend( dataset )
     # data=data[:2000] # for local debug
     # args.batch_size=64 # for local debug
+    if args.task == "subsuming":
+        for d in data:
+            d.by = d.sy
     random.shuffle(data)
     data = random.sample(data, int(len(data) * args.data_ratio))
     #data = balanced_subsample(data, y)
