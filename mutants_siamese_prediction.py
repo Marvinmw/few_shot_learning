@@ -13,7 +13,7 @@ import os
 from tqdm import tqdm
 import numpy as np
 from utils.model import  GNN_encoder
-from utils.tools import performance, TokenIns, get_logger, projects_dict,fecth_datalist, fetch_testdata
+from utils.tools import performance, TokenIns, get_logger, projects_dict,fetch_datalist, fetch_testdata
 from utils.pytorchtools import EarlyStopping
 from utils.AverageMeter import AverageMeter
 from utils.classifier import MutantSiameseModel
@@ -400,7 +400,7 @@ def train_mode(args, train_projects):
     
     criterion = nn.BCEWithLogitsLoss()  
     orgsavedpat=args.saved_model_path
-    dataset_list = fecth_datalist(args, train_projects)
+    dataset_list = fetch_datalist(args, train_projects)
 
     args.saved_model_path = f"{orgsavedpat}"
     if not os.path.isdir(args.saved_model_path):
@@ -510,7 +510,7 @@ def train_one_test_many(args):
         gc.collect()
         torch.cuda.empty_cache() 
 
-        test_dataset_dict = fecth_datalist(args, namelist)
+        test_dataset_dict = fetch_datalist(args, namelist)
         sum_res = test_eval_pair(args, device, namelist, test_dataset_dict)
         json.dump( sum_res, open(os.path.join(args.saved_model_path, "few_shot_test_pair.json"), "w"), indent=6 ) 
     
