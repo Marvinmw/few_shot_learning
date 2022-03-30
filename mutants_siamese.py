@@ -13,7 +13,7 @@ import os
 from tqdm import tqdm
 import numpy as np
 from utils.model import  GNN_encoder
-from utils.tools import projects_dict, TokenIns, get_logger, fecth_datalist
+from utils.tools import projects_dict, TokenIns, get_logger, fetch_datalist
 from utils.pytorchtools import EarlyStopping
 from utils.AverageMeter import AverageMeter
 from utils.classifier import MutantSiameseModel
@@ -234,7 +234,7 @@ def train_mode(args):
                 train_projects.extend(projects[pp])
     orgsavedpat=args.saved_model_path
 
-    dataset_list = fecth_datalist(args, namelist)
+    dataset_list = fetch_datalist(args, namelist)
 
     args.saved_model_path = f"{orgsavedpat}"
     if not os.path.isdir(args.saved_model_path):

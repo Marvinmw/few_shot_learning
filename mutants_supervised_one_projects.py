@@ -13,7 +13,7 @@ import os
 from tqdm import tqdm
 import numpy as np
 from utils.model import  GNN_encoder
-from utils.tools import performance, TokenIns, get_logger, projects_dict
+from utils.tools import fetch_datalist, performance, TokenIns, get_logger, projects_dict
 from utils.pytorchtools import EarlyStopping
 from utils.AverageMeter import AverageMeter
 from utils.classifier import MutantPairwiseModel
@@ -322,7 +322,7 @@ def train_one_test_many(args):
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(0)
     _, namelist = projects_dict(args)
-    dataset_list = fecth_datalist(args, namelist)
+    dataset_list = fetch_datalist(args, namelist)
     orginalsavepath = args.saved_model_path
     for k in range(len(namelist)):
         train_on_projects = [ namelist[k] ]
@@ -349,7 +349,7 @@ def test_performance(args):
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(0)
     _, namelist = projects_dict(args)
-    dataset_list = fecth_datalist(args, namelist)
+    dataset_list = fetch_datalist(args, namelist)
     orginalsavepath = args.saved_model_path
     for k in range(len(namelist)):
         train_on_projects = [ namelist[k] ]
