@@ -14,7 +14,7 @@ conda activate graph
 device=0
 num_class=2
 
-for train_project in  io_12  io_9 csv_27 csv_17 csv_20 lang_21
+for train_project in  io
 do
 for fine_tune in yes no
 do
