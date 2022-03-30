@@ -9,7 +9,7 @@ from sklearn.metrics import (
     matthews_corrcoef,
 )
 from torch.functional import Tensor
-from mutantsdataset import MutantKilledDataset, MutantRelevanceDataset, MutantTestRelevanceDataset
+from .mutantsdataset import MutantKilledDataset, MutantRelevanceDataset, MutantTestRelevanceDataset
 from tqdm import tqdm
 
 def fetch_datalist(args, projects):
