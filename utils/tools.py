@@ -1,3 +1,4 @@
+from tkinter.messagebox import NO
 import torch
 import numpy as np
 import sentencepiece as spm
@@ -12,23 +13,25 @@ from sklearn.metrics import (
 from torch.functional import Tensor
 
 import logging
-def get_logger(filename, verbosity=1, name=None):
-    level_dict = {0: logging.DEBUG, 1: logging.INFO, 2: logging.WARNING}
-    formatter = logging.Formatter(
-        "[%(asctime)s][%(filename)s][line:%(lineno)d][%(levelname)s] %(message)s"
-    )
-    logger = logging.getLogger(name)
-    logger.setLevel(level_dict[verbosity])
+def get_logger(filename, verbosity=1, name=None, iniit=False):
+    logger_ = None
+    if iniit:
+        level_dict = {0: logging.DEBUG, 1: logging.INFO, 2: logging.WARNING}
+        formatter = logging.Formatter(
+            "[%(asctime)s][%(filename)s][line:%(lineno)d][%(levelname)s] %(message)s"
+        )
+        logger_ = logging.getLogger(name)
+        logger_.setLevel(level_dict[verbosity])
 
-    fh = logging.FileHandler(filename, "w")
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
+        fh = logging.FileHandler(filename, "w")
+        fh.setFormatter(formatter)
+        logger_.addHandler(fh)
 
-    sh = logging.StreamHandler()
-    sh.setFormatter(formatter)
-    logger.addHandler(sh)
+        sh = logging.StreamHandler()
+        sh.setFormatter(formatter)
+        logger_.addHandler(sh)
 
-    return logger
+    return logger_
 
 
 

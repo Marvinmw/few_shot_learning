@@ -43,7 +43,7 @@ view_test_f1 = 0
 best_f1 = 0
 view_test_f1 = 0
 criterion = None #nn.CrossEntropyLoss()
-
+logger = None #get_logger(os.path.join(args.saved_model_path, "log.txt"))
 
 def train(args, model, device, loader, optimizer, scheduler):
     global best_f1
@@ -478,8 +478,8 @@ def train_one_test_many(args):
     _, namelist = projects_dict(args)
     
     orginalsavepath = args.saved_model_path
+    logger = get_logger(os.path.join(args.saved_model_path, "log.txt"),iniit=True)
     if args.fine_tune == "yes":
-        logger = get_logger(os.path.join(args.saved_model_path, "log.txt"))
         for k in range(len(namelist)):
             train_on_projects = [ namelist[k] ]
             test_on_projects = [  ]
@@ -502,7 +502,7 @@ def train_one_test_many(args):
             gc.collect()
             torch.cuda.empty_cache()  
     else:
-        logger = get_logger(os.path.join(args.saved_model_path, "eval.txt"))
+        #logger = get_logger(os.path.join(args.saved_model_path, "eval.txt"))
         logger.info("prediction")
         test_dataset_dict = fetch_testdata(args, namelist )
         args.saved_model_path =  os.path.dirname( args.saved_transfer_model_file )
@@ -586,7 +586,7 @@ if __name__ == "__main__":
 
    
     assert len(args.projects) == 1
-    logger = None #get_logger(os.path.join(args.saved_model_path, "log.txt"))
+   
 
     train_one_test_many(args)
 

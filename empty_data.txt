@@ -1,0 +1,11 @@
+[2022-03-30 19:20:00,981][file_utils.py][line:39][INFO] PyTorch version 1.8.0 available.
+[2022-03-30 19:20:01,001][modeling_xlnet.py][line:194][INFO] Better speed can be achieved with apex installed from https://www.github.com/nvidia/apex .
+[2022-03-30 19:20:01,005][mutants_siamese_prediction.py][line:494][INFO] fine tune ['collections_25']
+[2022-03-30 19:20:01,188][mutants_siamese_prediction.py][line:409][INFO] results/few_shot_killed_fine_tune_yes/mutants_2_train_collections_fine_tune_yes/context//gat/collections_25_fold/
+[2022-03-30 19:20:01,787][mutants_siamese_prediction.py][line:427][INFO] Trainable Parameters Encoder 2806903
+
+[2022-03-30 19:20:01,788][mutants_siamese_prediction.py][line:432][INFO] Load Pretraning model pretrained_models/context/gat/model_0
+[2022-03-30 19:20:01,812][mutants_siamese_prediction.py][line:436][INFO] 
+Total Number of Parameters of Model, 2806903
+[2022-03-30 19:20:01,813][mutants_siamese_prediction.py][line:439][INFO] Trainable Parameters Model 2809304
+
