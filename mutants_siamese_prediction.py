@@ -504,12 +504,13 @@ def train_one_test_many(args):
     else:
         #logger = get_logger(os.path.join(args.saved_model_path, "eval.txt"))
         logger.info("prediction")
-        test_dataset_dict = fetch_testdata(args, namelist )
-        args.saved_model_path =  os.path.dirname( args.saved_transfer_model_file )
-        sum_res = test_eval(args, device, namelist, test_dataset_dict)
-        json.dump( sum_res, open(os.path.join(args.saved_model_path, "few_shot_test_single.json"), "w"), indent=6 ) 
-        gc.collect()
-        torch.cuda.empty_cache() 
+        if args.task != "killed":
+            test_dataset_dict = fetch_testdata(args, namelist )
+            args.saved_model_path =  os.path.dirname( args.saved_transfer_model_file )
+            sum_res = test_eval(args, device, namelist, test_dataset_dict)
+            json.dump( sum_res, open(os.path.join(args.saved_model_path, "few_shot_test_single.json"), "w"), indent=6 ) 
+            gc.collect()
+            torch.cuda.empty_cache() 
 
         test_dataset_dict = fetch_datalist(args, namelist)
         sum_res = test_eval_pair(args, device, namelist, test_dataset_dict)
