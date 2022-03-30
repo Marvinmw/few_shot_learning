@@ -2,7 +2,7 @@ from pydoc import describe
 import sys
 # setting path
 sys.path.append('../')
-from utils.mutantsdataset import MutantKilledDataset, MutantRelevanceDataset
+#from utils.mutantsdataset import MutantKilledDataset, MutantRelevanceDataset
 import argparse
 import json
 from torch_geometric.data import DataLoader
@@ -13,7 +13,8 @@ import os
 from tqdm import tqdm
 import numpy as np
 from utils.model import  GNN_encoder
-from utils.tools import performance, TokenIns, get_logger, projects_dict, fetch_datalist
+from utils.tools import performance, TokenIns, get_logger
+from utils.datafactory import projects_dict, fetch_datalist
 from utils.pytorchtools import EarlyStopping
 from utils.AverageMeter import AverageMeter
 from utils.classifier import MutantPairwiseModel

@@ -13,7 +13,8 @@ import os
 from tqdm import tqdm
 import numpy as np
 from utils.model import  GNN_encoder
-from utils.tools import projects_dict, TokenIns, get_logger, fetch_datalist
+from utils.tools import TokenIns, get_logger
+from utils.datafactory import  projects_dict, fetch_datalist
 from utils.pytorchtools import EarlyStopping
 from utils.AverageMeter import AverageMeter
 from utils.classifier import MutantSiameseModel

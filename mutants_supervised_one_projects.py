@@ -1,7 +1,7 @@
 import sys
 # setting path
 sys.path.append('../')
-from utils.mutantsdataset import MutantKilledDataset, MutantRelevanceDataset, balanced_subsample
+#from utils.mutantsdataset import MutantKilledDataset, MutantRelevanceDataset, balanced_subsample
 import argparse
 import json
 from torch_geometric.data import DataLoader
@@ -13,7 +13,8 @@ import os
 from tqdm import tqdm
 import numpy as np
 from utils.model import  GNN_encoder
-from utils.tools import fetch_datalist, performance, TokenIns, get_logger, projects_dict
+from utils.tools import performance, TokenIns, get_logger
+from utils.datafactory import fetch_datalist, projects_dict
 from utils.pytorchtools import EarlyStopping
 from utils.AverageMeter import AverageMeter
 from utils.classifier import MutantPairwiseModel

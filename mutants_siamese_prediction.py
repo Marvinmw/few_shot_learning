@@ -13,13 +13,14 @@ import os
 from tqdm import tqdm
 import numpy as np
 from utils.model import  GNN_encoder
-from utils.tools import performance, TokenIns, get_logger, projects_dict,fetch_datalist, fetch_testdata
+from utils.tools import TokenIns, get_logger
+from utils.datafactory import  projects_dict,fetch_datalist, fetch_testdata
 from utils.pytorchtools import EarlyStopping
 from utils.AverageMeter import AverageMeter
 from utils.classifier import MutantSiameseModel
 import collections
 from torch.utils.data import WeightedRandomSampler
-from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
+#from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
 from utils.ranking import ranking_performance
 import random
 try:
