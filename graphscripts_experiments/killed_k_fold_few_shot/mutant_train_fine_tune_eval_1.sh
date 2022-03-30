@@ -25,7 +25,7 @@ do
         echo $d
         if [ -d ../../$output_folder/gat/$d ]
         then 
-        bash eval.sh gat "pretrained_models/context/gat/model_0" ${output_folder}/ attention $device $num_class $train_project $output_folder/gat/$d/saved_model.pt
+        bash eval.sh gat "pretrained_models/context/gat/model_0" ${output_folder}/gat/$d/ attention $device $num_class $train_project $output_folder/gat/$d/saved_model.pt
         fi
     done
 done

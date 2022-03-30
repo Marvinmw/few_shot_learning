@@ -5,17 +5,17 @@ output_prefix=$3
 gp=$4
 device=$5
 num_class=$6
-train_project=$7
-load_model=$8
+loss=$7
+train_project=$8
 dropratio=0.1
 cd ../../
 
-output=${output_prefix}
+output=${output_prefix}/${gnn_type}
 sw=lstm
 jk=sum
 lstm_emb_dim=150
-mkdir -p $output
-python mutants_siamese_prediction.py --batch_size 256 --num_workers 5  --epochs 10 --num_layer 5 \
+#mkdir -p $output
+python mutants_supervised_one_projects.py --batch_size 256 --num_workers 5  --epochs 10 --num_layer 5 \
 --subword_embedding  $sw \
 --lstm_emb_dim $lstm_emb_dim \
 --graph_pooling $gp \
@@ -32,10 +32,12 @@ python mutants_siamese_prediction.py --batch_size 256 --num_workers 5  --epochs 
 --lr 0.001 \
 --dropratio $dropratio \
 --warmup_schedule no \
---saved_transfer_model_file $load_model \
---task killed \
+--loss $loss \
+--saved_transfer_model_file -1 \
+--task relevance \
 --lazy yes \
---fine_tune no \
+--train no \
+--evalutaion yes \
 --projects $train_project
 
 

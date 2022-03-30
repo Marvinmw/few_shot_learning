@@ -10,7 +10,7 @@ load_model=$8
 dropratio=0.1
 cd ../../
 
-output=${output_prefix}
+output=${output_prefix}/${gnn_type}
 sw=lstm
 jk=sum
 lstm_emb_dim=150
@@ -33,7 +33,7 @@ python mutants_siamese_prediction.py --batch_size 256 --num_workers 5  --epochs 
 --dropratio $dropratio \
 --warmup_schedule no \
 --saved_transfer_model_file $load_model \
---task killed \
+--task relevance \
 --lazy yes \
 --fine_tune no \
 --projects $train_project

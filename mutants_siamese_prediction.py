@@ -106,12 +106,12 @@ def test_eval_pair(args, device,test_on_projects, test_dataset_dict):
     model = MutantSiameseModel(600, args.num_class, encoder, args.dropratio)
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info(f"Trainable Parameters Model {pytorch_total_params}\n")
-    f=os.path.join(args.saved_model_path, "saved_model.pt")
+    f=os.path.join(args.saved_transfer_model_file, "saved_model.pt")
     # print("'''''''''''''''''''''''''''''''''''''''")
     # print(os.path.join(args.saved_model_path, "saved_model.pt") )
-    assert os.path.isfile( os.path.join(args.saved_model_path, "saved_model.pt") ), f"Fine tune weights file path is wrong {str(f)}"
+    assert os.path.isfile( os.path.join(args.saved_transfer_model_file, "saved_model.pt") ), f"Fine tune weights file path is wrong {str(f)}"
     logger.info( f"Load Model {str(f)}" )
-    model.load_state_dict( torch.load(os.path.join(args.saved_model_path, "saved_model.pt"), map_location="cpu") )
+    model.load_state_dict( torch.load(os.path.join(args.saved_transfer_model_file, "saved_model.pt"), map_location="cpu") )
     model.to(device)
     model.eval()
     sum_res = {}
@@ -191,12 +191,12 @@ def test_eval(args, device,test_on_projects, test_dataset_dict):
     model = MutantSiameseModel(600, args.num_class, encoder, args.dropratio)
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info(f"Trainable Parameters Model {pytorch_total_params}\n")
-    f=os.path.join(args.saved_model_path, "saved_model.pt")
+    f=os.path.join(args.saved_transfer_model_file, "saved_model.pt")
     # print("'''''''''''''''''''''''''''''''''''''''")
     # print(os.path.join(args.saved_model_path, "saved_model.pt") )
-    assert os.path.isfile( os.path.join(args.saved_model_path, "saved_model.pt") ), f"Fine tune weights file path is wrong {str(f)}"
+    assert os.path.isfile( os.path.join(args.saved_transfer_model_file, "saved_model.pt") ), f"Fine tune weights file path is wrong {str(f)}"
     logger.info(f"Load model path {str(f)}")
-    model.load_state_dict( torch.load(os.path.join(args.saved_model_path, "saved_model.pt"), map_location="cpu") )
+    model.load_state_dict( torch.load(os.path.join(args.saved_transfer_model_file, "saved_model.pt"), map_location="cpu") )
     model.to(device)
     model.eval()
     sum_res = {}
@@ -506,7 +506,7 @@ def train_one_test_many(args):
         logger.info("prediction")
         if args.task != "killed":
             test_dataset_dict = fetch_testdata(args, namelist )
-            args.saved_model_path =  os.path.dirname( args.saved_transfer_model_file )
+            #args.saved_model_path =  os.path.dirname( args.saved_transfer_model_file )
             sum_res = test_eval(args, device, namelist, test_dataset_dict)
             json.dump( sum_res, open(os.path.join(args.saved_model_path, "few_shot_test_single.json"), "w"), indent=6 ) 
             gc.collect()

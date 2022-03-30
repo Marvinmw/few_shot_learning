@@ -6,11 +6,12 @@ gp=$4
 device=$5
 num_class=$6
 train_project=$7
-load_model=$8
+fine_tune=$8
+load_model=$9
 dropratio=0.1
 cd ../../
 
-output=${output_prefix}
+output=${output_prefix}/${gnn_type}
 sw=lstm
 jk=sum
 lstm_emb_dim=150
@@ -33,9 +34,9 @@ python mutants_siamese_prediction.py --batch_size 256 --num_workers 5  --epochs 
 --dropratio $dropratio \
 --warmup_schedule no \
 --saved_transfer_model_file $load_model \
---task killed \
---lazy yes \
---fine_tune no \
+--task relevance \
+--lazy no \
+--fine_tune $fine_tune \
 --projects $train_project
 
 
