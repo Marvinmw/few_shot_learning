@@ -24,7 +24,7 @@ def fetch_testdata(args, projects):
             assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
         dataset_list[p] = dataset_inmemory
     return dataset_list
-    
+
 import json
 import collections
 import os
@@ -32,7 +32,7 @@ import glob
 def projects_dict(args):
     projects = collections.defaultdict(list)
     name=[]
-    empty_data = json.load( open("empty_data.json") ) if args.task == "relevance" else []
+    empty_data = json.load( open("dataset/empty_data.json") ) if args.task == "relevance" else []
     if len(args.projects) > 1:
         for p in args.projects:
             for pf in glob.glob(f"{args.dataset_path}/{p}*"):
