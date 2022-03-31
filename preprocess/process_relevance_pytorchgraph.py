@@ -169,6 +169,7 @@ def preprocess(class_method_id_json, graph_json , rawins_json
             data_geometric.org_graph_id = int( graph_meta_info[method_id]["org_graph_id"])
             data_geometric.on_change = int( graph_meta_info[method_id]["On_Change"])
             data_geometric.submsuing_r = int( graph_meta_info[method_id]["subming_relevant"]  )
+            data_geometric.submsuing = int( graph_meta_info[method_id]["subsuming"]  )
            # data_geometric.y= int( graph_meta_info[method_id]["label"] )
             graph_id_list.append(  method_id )
         elif datatype == "original":
@@ -183,6 +184,7 @@ def preprocess(class_method_id_json, graph_json , rawins_json
             data_geometric.org_graph_id = -1
             data_geometric.on_change = -1
             data_geometric.submsuing_r = -1
+            data_geometric.submsuing = -1
             graph_id_list.append(  int(method_id) )
         else:
             assert False
@@ -270,7 +272,7 @@ if __name__ == "__main__":
     parser.add_argument("-i", "--input", dest="input", default="./relevance_java_dot_byteinfo")
     args = parser.parse_args()
     outputfolder = args.output
-    #run( args.input  )
+    run( args.input  )
     run_copy(args.input )
     
 

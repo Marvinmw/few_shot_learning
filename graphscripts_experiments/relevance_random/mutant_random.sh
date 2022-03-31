@@ -16,7 +16,7 @@ for test_project in collections csv io lang text
 do
 for prior in no yes
 do
-output_folder=results/random_prior/${prior}/mutants_${num_class}_rm_${test_project}/context
+output_folder=results/random_prior_relevance/${prior}/mutants_${num_class}_rm_${test_project}/context
 bash run.sh ${output_folder}/ $num_class $test_project $prior
 done
 done

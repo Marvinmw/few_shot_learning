@@ -35,12 +35,15 @@ def copy_original_class(commit_folder):
             shutil.copy(orgclasspath, f"{commit_folder}/original/{class_name}" )
 
 
+import muteria.statistics.mutant_quality_indicators as mindicators
 
-
-def replace_name(mutatns_folder, interactionfile,mutants_info, mutant_matrix_file,outputfolder):
+def replace_name(mutatns_folder, interactionfile,mutants_info, mutant_matrix_file, mutant_matrix_file_transfer,outputfolder):
     df = pd.read_csv(mutants_info, index_col=["sourceFile", "lineNumber","index", "block", "mutator"])
     df_kill_matrix = pd.read_csv(mutant_matrix_file, index_col="MutantID")
     df_kill_matrix["sum"] = df_kill_matrix.sum(axis=1)
+    df_subsum = pd.read_csv(mutant_matrix_file, index_col="MutantID")
+    ( subsuming, _ )= mindicators.getSubsumingMutants(mutant_matrix_file_transfer)
+    subsuming = [ int(i) for i in subsuming ]
    # result = df.index.is_unique
    # reid= df[df.index.duplicated()]
     # reid.to_csv("check_id.csv")
@@ -95,6 +98,7 @@ def replace_name(mutatns_folder, interactionfile,mutants_info, mutant_matrix_fil
                 info["subming_relevant"] = 1 if r["Minimal_relevant"] else 0
                 rid = r["MutantID"]
                 info["killed_label"] = 1 if df_kill_matrix.loc[rid, :]["sum"] > 0 else 0
+                info["subsuming"] = 1 if r["MutantID"] in subsuming else 0
                 info["methodDescription"] = r["methodDescription"]
                 info["mutatedMethod"] = r["mutatedMethod"]
                 info["mutatedClass"] = r["mutatedClass"]
@@ -173,7 +177,7 @@ if __name__ == '__main__':
                     continue
                # try:
                 print(f"{c_folder}")
-                replace_name(f"{c_folder}", f"{c_folder}/interaction_pairs.csv",f"{c_folder}/mutants_info.csv", f"{c_folder}/mutationMatrix.csv", f"{c_folder}")
+                replace_name(f"{c_folder}", f"{c_folder}/interaction_pairs.csv",f"{c_folder}/mutants_info.csv", f"{c_folder}/mutationMatrix.csv",  f"{c_folder}/mutationMatrix_transfer.csv", f"{c_folder}")
                # except Exception as e:
                 #     print(e)
                     #  with open("failed_projects/log.txt", "a") as f:

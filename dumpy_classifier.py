@@ -29,7 +29,7 @@ def fecth_datalist(args, projects):
     for s, p in enumerate(tqdm(projects, desc="Iteration")):
         if args.task == "killed":
             dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
-        elif args.task == "relevance":
+        elif args.task == "relevance" or args.task == "subsuming":
             dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0.0 )
         else:
             assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
@@ -42,7 +42,9 @@ def create_dataset(args, train_projects, dataset_list):
             dataset_inmemory = dataset_list[tp] 
             dataset = dataset_inmemory.data
             data.extend( dataset )
-   
+    if args.task == "subsuming":
+        for d in data:
+            d.by = d.sy
     random.shuffle(data)
     train_y = [ d.by.item() for d in data ]
     train_x = [ i for i in range(len(train_y))]
@@ -53,7 +55,10 @@ def create_singledataset(args, train_projects, dataset_list):
     for tp in train_projects:
             dataset_inmemory = dataset_list[tp] 
             dataset = dataset_inmemory.query_mutants
-            train_y += [ d.label_r_binary for d in dataset ]
+            if args.task == "relevance":
+                train_y += [ d.label_r_binary for d in dataset ]
+            else:
+                train_y += [ d.submsuing_r for d in dataset ]
     train_x = [ i for i in range(len(train_y))]
     return train_y, train_x
 
@@ -83,7 +88,7 @@ def fetch_testdata(args, projects):
     for s, p in enumerate(tqdm(projects, desc="Iteration")):
         if args.task == "killed":
             dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
-        elif args.task == "relevance":
+        elif args.task == "relevance" or args.task == "subsuming":
             dataset_inmemory = MutantTestRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
         else:
             assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
@@ -164,10 +169,12 @@ def test_single(args):
             continue
         dummpy_X = [ i for i in range(len(ground_truth))]
         probability = np.random.normal(loc=pos, size= len(ground_truth) ) #dummy_clf.predict_proba(dummpy_X)[:, 1]
+        
         res = ranking_performance(np.asarray(ground_truth),  probability)
         res["pos"] = np.sum(ground_truth)/len(ground_truth)
         sum_res[p] = res
         logger.info(f"{p} , {res}, prior {pos}")
+        
     return sum_res
 
 def train_mode(args):
@@ -207,7 +214,7 @@ if __name__ == "__main__":
                 usedp.append( p  )
         args.projects = usedp
     assert len(args.projects) == 4
-    logger = get_logger(os.path.join(args.saved_model_path, "log.txt"))
+    logger = get_logger(os.path.join(args.saved_model_path, "log.txt"), init=True)
     logger.info('start random baseline!')
     train_mode(args)
     logger.info('finishing random baseline!')

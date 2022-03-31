@@ -13,7 +13,10 @@ def threshold_sigmoid(similarity, th=0.5):
 
 def ranking_performance(ground_truth_np, score_pre):
     # ROC-Area
-    roc_score = roc_auc_score( ground_truth_np, score_pre  )
+    try:
+        roc_score = roc_auc_score( ground_truth_np, score_pre  )
+    except:
+        roc_score = 0
     # Compute Precision-Recall and plot curve
     precision, recall, thresholds = precision_recall_curve(ground_truth_np, score_pre)
     pr_area = auc(recall, precision)   
