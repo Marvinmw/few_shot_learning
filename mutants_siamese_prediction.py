@@ -438,7 +438,7 @@ def train_mode(args, train_projects):
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info(f"Trainable Parameters Model {pytorch_total_params}\n")
     if not args.saved_transfer_model_file == "-1":
-        model.load_state_dict( torch.load(args.saved_transfer_model_file, map_location="cpu") )
+        model.load_state_dict( torch.load(os.path.join(args.saved_transfer_model_file, "saved_model.pt"), map_location="cpu") )
     model.to(device)
 
     #set up optimizer
