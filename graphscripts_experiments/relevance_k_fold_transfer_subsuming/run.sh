@@ -1,4 +1,5 @@
 #!/bin/bash
+# 使用其他 project weights 作爲初始權重， 有監督學習
 gnn_type=$1
 pretrainpath=$2
 output_prefix=$3
@@ -35,7 +36,7 @@ python mutants_supervised_one_projects.py --batch_size 256 --num_workers 5  --ep
 --warmup_schedule no \
 --loss $loss \
 --saved_transfer_model_file $load_model \
---task relevance \
+--task subsuming \
 --lazy no \
 --train yes \
 --projects $train_project

@@ -19,7 +19,7 @@ do
 for loss in  CE SCL
 do
 output_folder=results/supervised_relevance_transferweights/${loss}/mutants_${num_class}_loss_${loss}_train_${train_project}/context
-bash run.sh gat "pretrained_models/context/gat/model_0" ${output_folder}/ attention $device $num_class $loss $train_project results/transfer_supervised_relevance/CE/mutants_2_loss_CE_rm_csv/context/gat/saved_model.pt
+bash run.sh gat "pretrained_models/context/gat/model_0" ${output_folder}/ attention $device $num_class $loss $train_project results/transfer_supervised_relevance/CE/mutants_2_loss_CE_rm_csv/context/gat/
 done
 done
 

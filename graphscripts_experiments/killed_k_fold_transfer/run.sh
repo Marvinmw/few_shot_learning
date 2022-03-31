@@ -1,4 +1,5 @@
 #!/bin/bash
+# 使用有監督學習進行預測， 加載其他項目的project weights, fine-tune當前的project
 gnn_type=$1
 pretrainpath=$2
 output_prefix=$3

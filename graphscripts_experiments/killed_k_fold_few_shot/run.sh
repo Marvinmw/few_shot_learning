@@ -1,4 +1,5 @@
 #!/bin/bash
+# 使用 distance-based metric來做預測，加載其他project pretrained model， 在自己的project上fine-tune或者不fine-tune 
 gnn_type=$1
 pretrainpath=$2
 output_prefix=$3
