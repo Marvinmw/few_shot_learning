@@ -557,13 +557,13 @@ if __name__ == "__main__":
     if args.train == "yes":
         with open(args.saved_model_path+'/commandline_args.txt', 'w') as f:
             json.dump(args.__dict__, f, indent=2)
-        logger = get_logger(os.path.join(args.saved_model_path, f"{args.check_failed}_log.txt"), iniit=True)
+        logger = get_logger(os.path.join(args.saved_model_path, f"{args.check_failed}_log.txt"), init=True)
         logger.info('start training!')
         train_one_test_many(args)
         logger.info('finishing training!')
 
     if args.evalutaion == "yes":
-        logger = get_logger(os.path.join(args.saved_model_path, "log_ranking.txt"), iniit=True)
+        logger = get_logger(os.path.join(args.saved_model_path, "log_ranking.txt"), init=True)
         logger.info('start eval!')
         test_performance(args)
         logger.info('finishing eval!')

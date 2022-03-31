@@ -13,9 +13,9 @@ from sklearn.metrics import (
 from torch.functional import Tensor
 
 import logging
-def get_logger(filename, verbosity=1, name=None, iniit=False):
+def get_logger(filename, verbosity=1, name=None, init=False):
     logger_ = None
-    if iniit:
+    if init:
         level_dict = {0: logging.DEBUG, 1: logging.INFO, 2: logging.WARNING}
         formatter = logging.Formatter(
             "[%(asctime)s][%(filename)s][line:%(lineno)d][%(levelname)s] %(message)s"

@@ -1,3 +1,4 @@
+from mimetypes import init
 from pydoc import describe
 import sys
 # setting path
@@ -478,7 +479,7 @@ def train_one_test_many(args):
     _, namelist = projects_dict(args)
     
     orginalsavepath = args.saved_model_path
-    logger = get_logger(os.path.join(args.saved_model_path, "log.txt"),iniit=True)
+    logger = get_logger(os.path.join(args.saved_model_path, "log.txt"),init=True)
     if args.fine_tune == "yes":
         for k in range(len(namelist)):
             train_on_projects = [ namelist[k] ]

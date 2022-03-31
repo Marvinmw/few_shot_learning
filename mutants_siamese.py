@@ -371,7 +371,7 @@ if __name__ == "__main__":
                 usedp.append( p  )
         args.projects = usedp
     assert len(args.projects) == 4
-    logger = get_logger(os.path.join(args.saved_model_path, "log.txt"), iniit=True)
+    logger = get_logger(os.path.join(args.saved_model_path, "log.txt"), init=True)
     logger.info('start training!')
     train_mode(args)
     logger.info('finishing training!')
