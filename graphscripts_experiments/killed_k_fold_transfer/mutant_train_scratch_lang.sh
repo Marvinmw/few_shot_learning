@@ -19,7 +19,7 @@ do
 for loss in SCL CE
 do
 output_folder=results/supervised_killed_transferweights/${loss}/mutants_${num_class}_loss_${loss}_train_${train_project}/context
-supervised_premodel=results/transfer_supervised_killed/CE/mutants_2_loss_CE_rm_${train_project}/context/gat/saved_model.pt
+supervised_premodel=results/transfer_supervised_killed/CE/mutants_2_loss_CE_rm_${train_project}/context/gat/
 bash run.sh gat "pretrained_models/context/gat/model_0" ${output_folder}/ attention $device $num_class $loss $train_project $supervised_premodel
 done
 done

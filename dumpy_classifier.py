@@ -174,9 +174,10 @@ def train_mode(args):
     os.makedirs( args.saved_model_path, exist_ok=True)
     set_seed(args)
     res1 = test_pair(args)
-    res2 = test_single(args)
     json.dump( res1, open(os.path.join(args.saved_model_path, "random_pair.json"), "w"), indent=6 )
-    json.dump( res2, open(os.path.join(args.saved_model_path, "random_single.json"), "w") , indent=6 )
+    if args.task != "killed":
+        res2 = test_single(args) 
+        json.dump( res2, open(os.path.join(args.saved_model_path, "random_single.json"), "w") , indent=6 )
 
 
 if __name__ == "__main__":
