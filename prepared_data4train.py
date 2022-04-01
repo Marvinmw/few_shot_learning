@@ -82,7 +82,7 @@ def main():
     parser.add_argument('--device', type=int, default=0,
                         help='which gpu to use if any (default: 0)')
     parser.add_argument("--dataset_path", type=str, default="dataset/pittest")
-    parser.add_argument("--pro", type=float, default=0.8)
+    parser.add_argument("--pro", type=float, default=0.)
     parser.add_argument("--dataset", type=str, default="DV_PDG")
     parser.add_argument("--task", type=str, default="relevance")
     parser.add_argument("--projects", nargs="+", default=["collections", "csv", "io", "text", "lang"])

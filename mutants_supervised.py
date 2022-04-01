@@ -190,7 +190,7 @@ def create_dataset(args, train_projects, dataset_list):
             dataset = dataset_inmemory.data
             data.extend( dataset )
     
-    if args.task == "subsuming":
+    if "subsuming" in args.task:
         for d in data:
             d.by = d.sy
     #data=data[:2000] # for local debug

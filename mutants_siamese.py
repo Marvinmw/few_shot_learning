@@ -160,7 +160,7 @@ def create_dataset(args, train_projects, dataset_list):
     # args.batch_size=64 # for local debug
     random.shuffle(data)
     data = random.sample(data, int(len(data) * args.data_ratio))
-    if args.task == "subsuming":
+    if "subsuming" in args.task:
         for d in data:
             d.by = d.sy
     #data = balanced_subsample(data, y)

@@ -267,7 +267,7 @@ def create_dataset(args, train_projects, dataset_list):
             dataset_inmemory = dataset_list[tp]
             dataset = dataset_inmemory.data
             data.extend( dataset )
-    if args.task == "subsuming":
+    if "subsuming" in args.task:
         for d in data:
             d.by = d.sy
 

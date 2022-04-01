@@ -341,7 +341,7 @@ def create_dataset(args, train_projects, dataset_list):
             data.extend( dataset )
     # data=data[:2000] # for local debug
     # args.batch_size=64 # for local debug
-    if args.task == "subsuming":
+    if "subsuming" in args.task:
         for d in data:
             d.by = d.sy
     random.shuffle(data)
@@ -505,7 +505,7 @@ def train_one_test_many(args):
     else:
         #logger = get_logger(os.path.join(args.saved_model_path, "eval.txt"))
         logger.info("prediction")
-        if args.task != "killed":
+        if args.task != "killed" and args.task != "subsuming_k":
             test_dataset_dict = fetch_testdata(args, namelist )
             #args.saved_model_path =  os.path.dirname( args.saved_transfer_model_file )
             sum_res = test_eval(args, device, namelist, test_dataset_dict)

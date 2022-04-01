@@ -27,9 +27,9 @@ import glob
 def fecth_datalist(args, projects):
     dataset_list = {}
     for s, p in enumerate(tqdm(projects, desc="Iteration")):
-        if args.task == "killed":
+        if args.task == "killed" or args.task == "subsuming_k":
             dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
-        elif args.task == "relevance" or args.task == "subsuming":
+        elif args.task == "relevance" or args.task == "subsuming_r":
             dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0.0 )
         else:
             assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
@@ -42,7 +42,7 @@ def create_dataset(args, train_projects, dataset_list):
             dataset_inmemory = dataset_list[tp] 
             dataset = dataset_inmemory.data
             data.extend( dataset )
-    if args.task == "subsuming":
+    if "subsuming" in args.task:
         for d in data:
             d.by = d.sy
     random.shuffle(data)
@@ -86,9 +86,9 @@ import glob
 def fetch_testdata(args, projects):
     dataset_list = {}
     for s, p in enumerate(tqdm(projects, desc="Iteration")):
-        if args.task == "killed":
+        if args.task == "killed" or args.task == "subsuming_k":
             dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
-        elif args.task == "relevance" or args.task == "subsuming":
+        elif args.task == "relevance" or args.task == "subsuming_r":
             dataset_inmemory = MutantTestRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
         else:
             assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
@@ -182,7 +182,7 @@ def train_mode(args):
     set_seed(args)
     res1 = test_pair(args)
     json.dump( res1, open(os.path.join(args.saved_model_path, "random_pair.json"), "w"), indent=6 )
-    if args.task != "killed":
+    if args.task != "killed" and args.task != "subsuming_k":
         res2 = test_single(args) 
         json.dump( res2, open(os.path.join(args.saved_model_path, "random_single.json"), "w") , indent=6 )
 

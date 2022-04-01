@@ -4,9 +4,9 @@ from tqdm import tqdm
 def fetch_datalist(args, projects):
     dataset_list = {}
     for s, p in enumerate(tqdm(projects, desc="Iteration")):
-        if args.task == "killed":
+        if args.task == "killed" or args.task == "subsuming_k":
             dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
-        elif args.task == "relevance" or args.task == "subsuming":
+        elif args.task == "relevance" or args.task == "subsuming_r":
             dataset_inmemory = MutantRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p, probability=0.0 )
         else:
             assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"
@@ -16,9 +16,9 @@ def fetch_datalist(args, projects):
 def fetch_testdata(args, projects):
     dataset_list = {}
     for s, p in enumerate(tqdm(projects, desc="Iteration")):
-        if args.task == "killed":
+        if args.task == "killed" or args.task == "subsuming_k":
             dataset_inmemory = MutantKilledDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
-        elif args.task == "relevance" or args.task == "subsuming":
+        elif args.task == "relevance" or args.task == "subsuming_r":
             dataset_inmemory = MutantTestRelevanceDataset( f"{args.dataset_path}/{p}" , dataname=args.dataset, project=p )
         else:
             assert False, f"wrong task name {args.task}, valid [ killed, relevance ]"

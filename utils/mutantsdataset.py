@@ -122,7 +122,7 @@ class MutantKilledDataset(InMemoryDataset):
                     continue
                 kill_mutant_data.append(PairData(mutant_graph.edge_index,  mutant_graph.x, mutant_graph.edge_attr,mutant_graph.ins_length, 
                                                             org_graph.edge_index,  org_graph.x, org_graph.edge_attr, org_graph.ins_length, 
-                                                            torch.tensor(mutant_graph.label_k_binary), torch.tensor(mutant_graph.label_k_mul), torch.tensor(mutant_graph.mutant_type), torch.tensor(mid) ))
+                                                            torch.tensor(mutant_graph.label_k_binary), torch.tensor(mutant_graph.label_k_mul), torch.tensor(mutant_graph.submsuing), torch.tensor(mutant_graph.mutant_type), torch.tensor(mid) ))
                 kill_mutant_binary_labels.append( mutant_graph.label_k_binary )
                 kill_mutant_multiple_labels.append( mutant_graph.label_k_mul )
         print(  os.path.dirname(self.processed_paths[0]) )                                               
@@ -136,7 +136,7 @@ class MutantKilledDataset(InMemoryDataset):
         json.dump(mstat, open(self.processed_paths[3], "w") , indent=6)
 
 
-logger = get_logger("empty_data.txt", init=True)
+#logger = get_logger("empty_data.txt", init=True)
 
 class MutantRelevanceDataset(InMemoryDataset):
     def __init__(self, root, dataname, project="",probability=0.6, transform=None, pre_transform=None, pre_filter=None):
@@ -302,8 +302,8 @@ class MutantRelevanceDataset(InMemoryDataset):
         mstat = collections.Counter(relevance_mutant_multiple_labels)
         json.dump(bstat, open(self.processed_paths[2], "w") , indent=6)
         json.dump(mstat, open(self.processed_paths[3], "w") , indent=6)
-        if len(relevance_mutant_binary_labels) == 0:
-            logger.info(f"{self.root}")
+        # if len(relevance_mutant_binary_labels) == 0:
+        #     logger.info(f"{self.root}")
 
 
 def balanced_subsample(x,y,subsample_size=1.0):
