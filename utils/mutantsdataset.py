@@ -292,7 +292,7 @@ class MutantRelevanceDataset(InMemoryDataset):
 
                         relevance_mutant_data.append(PairData(mutant_graph.edge_index,  mutant_graph.x, mutant_graph.edge_attr,mutant_graph.ins_length, 
                                                                 c_graph.edge_index,  c_graph.x, c_graph.edge_attr, c_graph.ins_length, 
-                                                                torch.tensor( 0 ), torch.tensor(ml), torch.tensor(mutant_graph.mutant_type), torch.tensor(mid) ))
+                                                                torch.tensor( 0 ), torch.tensor(ml),torch.tensor(0), torch.tensor(mutant_graph.mutant_type), torch.tensor(mid) ))
         print(  os.path.dirname(self.processed_paths[0]) )
         if not os.path.isdir( os.path.dirname(self.processed_paths[0]) ):
            os.makedirs( os.path.dirname(self.processed_paths[0]), exist_ok=True )          
@@ -481,7 +481,6 @@ class MutantTestRelevanceDataset(Dataset):
                 for interacted_mid in interacted_mid_list:
                     if mutant_meta[str(interacted_mid)]["mutatedMethod"] == mutant_method_name and mutant_meta[str(interacted_mid)]["mutatedClass"] == mutant_class_name:
                         interacted_mid_index_list.append( on_change_graph[int(interacted_mid)][1] )
-
                         considered_mutants_index.append( mutant_graph_index )
                         interaction_index[ mutant_graph_index ] = interacted_mid_index_list
              

@@ -15,7 +15,7 @@ conda activate graph
 device=0
 num_class=2
 # collections csv io lang text
-for test_project in collections csv io lang text
+for test_project in lang text
 do
 for loss in  SCL
 do
