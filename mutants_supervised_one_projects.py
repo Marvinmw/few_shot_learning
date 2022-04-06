@@ -550,7 +550,7 @@ if __name__ == "__main__":
     parser.add_argument("--loss", type=str, default="CE", help='[CE, SCL]')
     parser.add_argument("--evalutaion", type=str, default="no", help='[no, yes]')
     parser.add_argument("--train", type=str, default="no", help='[no, yes]')
-    parser.add_argument("--check_failed", type=str, default="yes", help='[no, yes]')
+    parser.add_argument("--check_failed", type=str, default="no", help='[no, yes]')
     args = parser.parse_args( )
     
     assert len(args.projects) == 1
