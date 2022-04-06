@@ -14,11 +14,11 @@ conda activate graph
 device=0
 num_class=2
 
-for train_project in  io_12  io_9 csv_27 csv_17 csv_20 lang_21
+for train_project in  io
 do
 for loss in SCL CE
 do
-output_folder=results/rerun/supervised_killed/${loss}/mutants_${num_class}_loss_${loss}_train_${train_project}/context
+output_folder=results/supervised_killed/${loss}/mutants_${num_class}_loss_${loss}_train_${train_project}/context
 bash run.sh gat "pretrained_models/context/gat/model_0" ${output_folder}/ attention $device $num_class $loss $train_project
 done
 done

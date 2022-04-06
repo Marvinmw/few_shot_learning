@@ -2,7 +2,7 @@
     a. few shot finetune using pretrained models,          few_shot_relevance_fine_tune_yes    Done             relevance_k_fold_few_shot
     b. few shot without finetune using pretrained models   few_shot_relevance_fine_tune_no     Done             relevance_k_fold_few_shot
     c. supervised relevance  without pretrained models     supervised_relevance                Done             relevance_k_fold
-    d. supervised relevance  with pretrained models        supervised_relevance_transferweights 
+    d. supervised relevance  with pretrained models        supervised_relevance_transferweights running         relevance_k_fold_transfer
     e. 
 
 2. killable
