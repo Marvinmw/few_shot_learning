@@ -34,7 +34,7 @@ python mutants_siamese_prediction.py --batch_size 256 --num_workers 5  --epochs 
 --dropratio $dropratio \
 --warmup_schedule no \
 --saved_transfer_model_file $load_model \
---task subsuming \
+--task subsuming_r \
 --lazy no \
 --fine_tune $fine_tune \
 --projects $train_project
