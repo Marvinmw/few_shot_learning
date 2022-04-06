@@ -1,7 +1,7 @@
 1. relevance
-    a. few shot finetune using pretrained models,          few_shot_relevance_fine_tune_yes    Done
-    b. few shot without finetune using pretrained models   few_shot_relevance_fine_tune_no     Done
-    c. supervised relevance  without pretrained models     supervised_relevance                
+    a. few shot finetune using pretrained models,          few_shot_relevance_fine_tune_yes    Done             relevance_k_fold_few_shot
+    b. few shot without finetune using pretrained models   few_shot_relevance_fine_tune_no     Done             relevance_k_fold_few_shot
+    c. supervised relevance  without pretrained models     supervised_relevance                Done             relevance_k_fold
     d. supervised relevance  with pretrained models        supervised_relevance_transferweights 
     e. 
 
