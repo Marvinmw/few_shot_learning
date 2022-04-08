@@ -3,8 +3,9 @@
     b. few shot without finetune using pretrained models   few_shot_relevance_fine_tune_no     Done             relevance_k_fold_few_shot
     c. supervised relevance  without pretrained models     supervised_relevance                Done             relevance_k_fold
     d. supervised relevance  with pretrained models        supervised_relevance_transferweights Done         relevance_k_fold_transfer
-    e. few shot subsuming                                                                       running         relevance_k_fold_few_shot_subsuming
-    f.                                                                                          running         relevance_k_fold_transfer_subsuming
+    e. few shot subsuming   with finetune yes                                                   not         relevance_k_fold_few_shot_subsuming
+    f. few shot subsuming   without finetune no                                                 Done         relevance_k_fold_few_shot_subsuming
+    g. subsuming mutaints trainsfer                                                             Done         relevance_k_fold_transfer_subsuming
 
 2. killable
     a. few shot without finetune using pretrained models   few_shot_killed_fine_tune_no         Done             killed_k_fold_few_shot
