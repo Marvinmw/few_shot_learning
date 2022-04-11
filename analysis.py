@@ -178,6 +178,34 @@ def plot_kill_random():
         plot_performance_random(res1, {k:res2["lang"] for k in res2["lang"]}, "lang",list(res1.keys()),score, "Few_Shot_Killed", "Supervirsed", output)
         plot_performance_random(res1, {k:res2["collections"] for k in res2["collections"]}, "collections",list(res1.keys()),score, "Few_Shot_Killed", "Supervirsed", output)
 
+
+def plot_relevance_random():
+    # relevance mutants, few_shot_learing VS Supervirsed
+    res1 = method_test_pair("results/few_shot_relevance_fine_tune_yes")
+    res2 = random_test_pair("results/random_prior_relevance/yes")
+    for score in ["f1", "recall", "precision"]:
+        output = f"fig/relevance_few_shot_vs_random/{score}"
+        os.makedirs(output, exist_ok=True)
+        plot_performance_random(res1, {k:res2["csv"] for k in res2["csv"]}, "csv",list(res1.keys()),score, "Few_Shot_relevance", "Supervirsed", output)
+        plot_performance_random(res1, {k:res2["io"] for k in res2["io"]}, "io",list(res1.keys()),score, "Few_Shot_relevance", "Supervirsed", output)
+        plot_performance_random(res1, {k:res2["text"] for k in res2["text"]}, "text",list(res1.keys()),score, "Few_Shot_relevance", "Supervirsed",output)
+        plot_performance_random(res1, {k:res2["lang"] for k in res2["lang"]}, "lang",list(res1.keys()),score, "Few_Shot_relevance", "Supervirsed", output)
+        plot_performance_random(res1, {k:res2["collections"] for k in res2["collections"]}, "collections",list(res1.keys()),score, "Few_Shot_relevance", "Supervirsed", output)
+    
+    # subsuming relevance mutants, few_shot_learing VS Supervirsed
+    # relevance mutants, few_shot_learing VS Supervirsed
+    res1 = method_test_pair("results/few_shot_relevance_subsuming_fine_tune_yes")
+    res2 = random_test_pair("results/random_prior_subsuming/yes")
+    
+    for score in ["f1", "recall", "precision"]:
+        output = f"fig/relevance_subsuming_few_shot_vs_random/{score}"
+        os.makedirs(output, exist_ok=True)
+        plot_performance_random(res1, {k:res2["text"] for k in res2["text"]}, "text",list(res1.keys()),score, "Few_Shot_relevance", "Supervirsed", output)
+        plot_performance_random(res1, {k:res2["csv"] for k in res2["csv"]}, "csv",list(res1.keys()),score, "Few_Shot_relevance", "Supervirsed", output)
+        plot_performance_random(res1, {k:res2["io"] for k in res2["io"]}, "io",list(res1.keys()),score, "Few_Shot_relevance", "Supervirsed", output)
+        plot_performance_random(res1, {k:res2["lang"] for k in res2["lang"]}, "lang",list(res1.keys()),score, "Few_Shot_relevance", "Supervirsed", output)
+        plot_performance_random(res1, {k:res2["collections"] for k in res2["collections"]}, "collections",list(res1.keys()),score, "Few_Shot_relevance", "Supervirsed", output)
+
 def plot_kill():
     # killed mutants, few_shot_learing VS Supervirsed
     res1 = method_test_pair("results/few_shot_killed_fine_tune_yes")
@@ -212,11 +240,11 @@ def plot_relevance():
     
     for score in ["f1", "recall", "precision"]:
         os.makedirs(f"fig/relevance_few_shot_vs_supervised/{score}", exist_ok=True)
-        plot_performance(res1, res2, "csv",list(res1.keys()),score, "Few_Shot_Killed", "Supervirsed", f"fig/relevance_few_shot_vs_supervised/{score}")
-        plot_performance(res1, res2, "io",list(res1.keys()),score, "Few_Shot_Killed", "Supervirsed", f"fig/relevance_few_shot_vs_supervised/{score}")
-        plot_performance(res1, res2, "text",list(res1.keys()),score, "Few_Shot_Killed", "Supervirsed", f"fig/relevance_few_shot_vs_supervised/{score}")
-        plot_performance(res1, res2, "lang",list(res1.keys()),score, "Few_Shot_Killed", "Supervirsed", f"fig/relevance_few_shot_vs_supervised/{score}")
-        plot_performance(res1, res2, "collections",list(res1.keys()),score, "Few_Shot_Killed", "Supervirsed", f"fig/relevance_few_shot_vs_supervised/{score}")
+        plot_performance(res1, res2, "csv",list(res1.keys()),score, "Few_Shot_relevance", "Supervirsed", f"fig/relevance_few_shot_vs_supervised/{score}")
+        plot_performance(res1, res2, "io",list(res1.keys()),score, "Few_Shot_relevance", "Supervirsed", f"fig/relevance_few_shot_vs_supervised/{score}")
+        plot_performance(res1, res2, "text",list(res1.keys()),score, "Few_Shot_relevance", "Supervirsed", f"fig/relevance_few_shot_vs_supervised/{score}")
+        plot_performance(res1, res2, "lang",list(res1.keys()),score, "Few_Shot_relevance", "Supervirsed", f"fig/relevance_few_shot_vs_supervised/{score}")
+        plot_performance(res1, res2, "collections",list(res1.keys()),score, "Few_Shot_relevance", "Supervirsed", f"fig/relevance_few_shot_vs_supervised/{score}")
     
     # subsuming killed mutants, few_shot_learing VS Supervirsed
     # killed mutants, few_shot_learing VS Supervirsed
@@ -226,13 +254,14 @@ def plot_relevance():
     for score in ["f1", "recall", "precision"]:
         output = f"fig/relevance_subsuming_few_shot_vs_supervised/{score}"
         os.makedirs(output, exist_ok=True)
-        plot_performance(res1, res2, "text",list(res1.keys()),score, "Few_Shot_Killed", "Supervirsed", output)
-        plot_performance(res1, res2, "csv",list(res1.keys()),score, "Few_Shot_Killed", "Supervirsed", output)
-        plot_performance(res1, res2, "io",list(res1.keys()),score, "Few_Shot_Killed", "Supervirsed", output)
-        plot_performance(res1, res2, "lang",list(res1.keys()),score, "Few_Shot_Killed", "Supervirsed", output)
-        plot_performance(res1, res2, "collections",list(res1.keys()),score, "Few_Shot_Killed", "Supervirsed", output)
+        plot_performance(res1, res2, "text",list(res1.keys()),score, "Few_Shot_relevance", "Supervirsed", output)
+        plot_performance(res1, res2, "csv",list(res1.keys()),score, "Few_Shot_relevance", "Supervirsed", output)
+        plot_performance(res1, res2, "io",list(res1.keys()),score, "Few_Shot_relevance", "Supervirsed", output)
+        plot_performance(res1, res2, "lang",list(res1.keys()),score, "Few_Shot_relevance", "Supervirsed", output)
+        plot_performance(res1, res2, "collections",list(res1.keys()),score, "Few_Shot_relevance", "Supervirsed", output)
 
 if __name__ == "__main__":
+    plot_relevance_random()
     plot_kill_random()
     plot_kill()
     plot_relevance()
